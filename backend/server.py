@@ -77,6 +77,10 @@ class TransactionType(str, Enum):
     GAME_BET = "game_bet"
     GAME_WIN = "game_win"
     TRANSFER = "transfer"
+    ACTIVITY_REWARD = "activity_reward"
+    DAILY_REWARD = "daily_reward"
+    REFERRAL_COMMISSION = "referral_commission"
+    CHARITY_CONTRIBUTION = "charity_contribution"
 
 class TransactionStatus(str, Enum):
     PENDING = "pending"
