@@ -332,14 +332,14 @@ export default function VIPScreen() {
                 </Text>
 
                 <View style={styles.modalBenefits}>
-                  {selectedLevel.gaming_bonus > 0 && (
+                  {selectedLevel.charity_bonus > 0 && (
                     <Text style={styles.modalBenefitText}>
-                      • +{selectedLevel.gaming_bonus}% Gaming Bonus
+                      • +{selectedLevel.charity_bonus}% Charity Lucky Wallet Bonus
                     </Text>
                   )}
                   {selectedLevel.free_spins_daily > 0 && (
                     <Text style={styles.modalBenefitText}>
-                      • {selectedLevel.free_spins_daily} Free Spins Daily
+                      • {selectedLevel.free_spins_daily} Lucky Wallet Spins Daily
                     </Text>
                   )}
                   {selectedLevel.education_discount > 0 && (
@@ -354,7 +354,7 @@ export default function VIPScreen() {
                     <Text style={styles.modalBenefitText}>• Fast Withdrawals</Text>
                   )}
                   {selectedLevel.exclusive_games && (
-                    <Text style={styles.modalBenefitText}>• Exclusive Games Access</Text>
+                    <Text style={styles.modalBenefitText}>• Exclusive Features Access</Text>
                   )}
                 </View>
 
