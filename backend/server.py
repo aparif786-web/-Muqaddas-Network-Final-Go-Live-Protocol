@@ -212,7 +212,7 @@ VIP_LEVELS_DATA = [
         "name": "Diamond",
         "recharge_requirement": 50000,
         "monthly_fee": 1999,
-        "gaming_bonus": 30,
+        "charity_bonus": 30,
         "free_spins_daily": 50,
         "education_discount": 30,
         "priority_support": True,
