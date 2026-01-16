@@ -22,7 +22,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#FFD700',
         tabBarInactiveTintColor: '#808080',
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: '500',
         },
       }}
@@ -32,7 +32,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="home" size={22} color={color} />
           ),
         }}
       />
@@ -41,7 +41,7 @@ export default function TabLayout() {
         options={{
           title: 'Wallet',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet" size={size} color={color} />
+            <Ionicons name="wallet" size={22} color={color} />
           ),
         }}
       />
@@ -50,7 +50,16 @@ export default function TabLayout() {
         options={{
           title: 'Rewards',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="gift" size={size} color={color} />
+            <Ionicons name="gift" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="agency"
+        options={{
+          title: 'Agency',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="briefcase" size={22} color={color} />
           ),
         }}
       />
@@ -59,7 +68,7 @@ export default function TabLayout() {
         options={{
           title: 'VIP',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="diamond" size={size} color={color} />
+            <Ionicons name="diamond" size={22} color={color} />
           ),
         }}
       />
@@ -68,7 +77,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <Ionicons name="person" size={22} color={color} />
           ),
         }}
       />
