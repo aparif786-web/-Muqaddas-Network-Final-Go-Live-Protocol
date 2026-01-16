@@ -1709,6 +1709,394 @@ async def get_charity_leaderboard():
     
     return {"leaderboard": leaderboard}
 
+# ==================== GIFT SYSTEM ====================
+
+# Signature Gift Categories with Unique Designs
+SIGNATURE_GIFTS = {
+    "basic": [
+        {"gift_id": "rose", "name": "Red Rose", "emoji": "rose", "price": 10, "category": "basic", "animation": "float"},
+        {"gift_id": "heart", "name": "Love Heart", "emoji": "heart", "price": 20, "category": "basic", "animation": "pulse"},
+        {"gift_id": "star", "name": "Shining Star", "emoji": "star", "price": 30, "category": "basic", "animation": "sparkle"},
+        {"gift_id": "coffee", "name": "Hot Coffee", "emoji": "coffee", "price": 15, "category": "basic", "animation": "steam"},
+        {"gift_id": "kiss", "name": "Flying Kiss", "emoji": "kiss", "price": 25, "category": "basic", "animation": "fly"},
+    ],
+    "premium": [
+        {"gift_id": "diamond_ring", "name": "Diamond Ring", "emoji": "ring", "price": 500, "category": "premium", "animation": "shine"},
+        {"gift_id": "gold_crown", "name": "Royal Crown", "emoji": "crown", "price": 1000, "category": "premium", "animation": "glow"},
+        {"gift_id": "sports_car", "name": "Sports Car", "emoji": "car", "price": 2000, "category": "premium", "animation": "drive"},
+        {"gift_id": "private_jet", "name": "Private Jet", "emoji": "airplane", "price": 5000, "category": "premium", "animation": "takeoff"},
+        {"gift_id": "yacht", "name": "Luxury Yacht", "emoji": "boat", "price": 8000, "category": "premium", "animation": "wave"},
+    ],
+    "signature": [
+        {"gift_id": "mugaddas_star", "name": "Mugaddas Star", "emoji": "sparkles", "price": 10000, "category": "signature", "animation": "supernova", "exclusive": True},
+        {"gift_id": "golden_palace", "name": "Golden Palace", "emoji": "castle", "price": 25000, "category": "signature", "animation": "build", "exclusive": True},
+        {"gift_id": "universe", "name": "Gift of Universe", "emoji": "galaxy", "price": 50000, "category": "signature", "animation": "cosmic", "exclusive": True},
+        {"gift_id": "eternal_love", "name": "Eternal Love", "emoji": "infinity", "price": 100000, "category": "signature", "animation": "eternal", "exclusive": True},
+    ],
+    "special": [
+        {"gift_id": "birthday_cake", "name": "Birthday Cake", "emoji": "cake", "price": 100, "category": "special", "animation": "candles"},
+        {"gift_id": "fireworks", "name": "Fireworks", "emoji": "fireworks", "price": 200, "category": "special", "animation": "explode"},
+        {"gift_id": "trophy", "name": "Winner Trophy", "emoji": "trophy", "price": 300, "category": "special", "animation": "shine"},
+        {"gift_id": "lucky_charm", "name": "Lucky Charm", "emoji": "clover", "price": 88, "category": "special", "animation": "lucky"},
+    ]
+}
+
+# Messaging Rewards Config
+MESSAGING_REWARDS = {
+    "chat_reward": 20,  # Coins for chatting with someone
+    "female_bonus": 20,  # Additional bonus for female interaction
+    "max_daily_chat_rewards": 50,  # Maximum chat rewards per day
+}
+
+@api_router.get("/gifts/catalog")
+async def get_gift_catalog():
+    """Get all available gifts"""
+    return {
+        "gifts": SIGNATURE_GIFTS,
+        "categories": ["basic", "premium", "signature", "special"]
+    }
+
+class SendGiftRequest(BaseModel):
+    gift_id: str
+    receiver_id: str
+    quantity: int = 1
+    message: Optional[str] = None
+
+@api_router.post("/gifts/send")
+async def send_gift(
+    request: SendGiftRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Send a gift to another user"""
+    # Find the gift
+    gift = None
+    for category_gifts in SIGNATURE_GIFTS.values():
+        for g in category_gifts:
+            if g["gift_id"] == request.gift_id:
+                gift = g
+                break
+        if gift:
+            break
+    
+    if not gift:
+        raise HTTPException(status_code=404, detail="Gift not found")
+    
+    # Check receiver exists
+    receiver = await db.users.find_one(
+        {"user_id": request.receiver_id},
+        {"_id": 0}
+    )
+    if not receiver:
+        raise HTTPException(status_code=404, detail="Receiver not found")
+    
+    if request.receiver_id == current_user.user_id:
+        raise HTTPException(status_code=400, detail="Cannot send gift to yourself")
+    
+    total_cost = gift["price"] * request.quantity
+    
+    # Check sender's balance
+    wallet = await db.wallets.find_one(
+        {"user_id": current_user.user_id},
+        {"_id": 0}
+    )
+    
+    if wallet["coins_balance"] < total_cost:
+        raise HTTPException(status_code=400, detail="Insufficient coins balance")
+    
+    # Deduct from sender
+    await db.wallets.update_one(
+        {"user_id": current_user.user_id},
+        {
+            "$inc": {"coins_balance": -total_cost},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+    
+    # Calculate charity contribution (2%)
+    charity_amount = total_cost * (CHARITY_CONFIG["vip_gift_charity_percent"] / 100)
+    receiver_amount = total_cost - charity_amount
+    
+    # Add to receiver's stars (gifts convert to stars)
+    await db.wallets.update_one(
+        {"user_id": request.receiver_id},
+        {
+            "$inc": {"stars_balance": receiver_amount},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+    
+    # Add to charity wallet
+    await db.charity_wallet.update_one(
+        {},
+        {
+            "$inc": {
+                "total_balance": charity_amount,
+                "total_received": charity_amount
+            },
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        },
+        upsert=True
+    )
+    
+    # Record charity contribution
+    await db.charity_contributions.insert_one({
+        "contribution_id": f"char_{uuid.uuid4().hex[:12]}",
+        "user_id": current_user.user_id,
+        "amount": charity_amount,
+        "source": "gift",
+        "gift_id": gift["gift_id"],
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Create gift record
+    gift_record_id = f"gift_{uuid.uuid4().hex[:12]}"
+    await db.gift_records.insert_one({
+        "gift_record_id": gift_record_id,
+        "sender_id": current_user.user_id,
+        "receiver_id": request.receiver_id,
+        "gift_id": gift["gift_id"],
+        "gift_name": gift["name"],
+        "gift_price": gift["price"],
+        "quantity": request.quantity,
+        "total_value": total_cost,
+        "message": request.message,
+        "charity_amount": charity_amount,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Create transactions
+    await db.wallet_transactions.insert_one({
+        "transaction_id": f"txn_{uuid.uuid4().hex[:12]}",
+        "user_id": current_user.user_id,
+        "transaction_type": "gift_sent",
+        "amount": -total_cost,
+        "currency_type": "coins",
+        "status": TransactionStatus.COMPLETED,
+        "reference_id": gift_record_id,
+        "description": f"Sent {request.quantity}x {gift['name']} to {receiver['name']}",
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    await db.wallet_transactions.insert_one({
+        "transaction_id": f"txn_{uuid.uuid4().hex[:12]}",
+        "user_id": request.receiver_id,
+        "transaction_type": "gift_received",
+        "amount": receiver_amount,
+        "currency_type": "stars",
+        "status": TransactionStatus.COMPLETED,
+        "reference_id": gift_record_id,
+        "description": f"Received {request.quantity}x {gift['name']} from {current_user.name}",
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Send notification to receiver
+    await db.notifications.insert_one({
+        "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "user_id": request.receiver_id,
+        "title": f"Gift Received! 🎁",
+        "message": f"{current_user.name} sent you {request.quantity}x {gift['name']}!" + (f"\nMessage: {request.message}" if request.message else ""),
+        "notification_type": "gift",
+        "is_read": False,
+        "action_url": "/gifts",
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    return {
+        "success": True,
+        "gift_record_id": gift_record_id,
+        "gift": gift,
+        "quantity": request.quantity,
+        "total_cost": total_cost,
+        "charity_contribution": charity_amount,
+        "receiver_earned": receiver_amount
+    }
+
+@api_router.get("/gifts/sent")
+async def get_sent_gifts(
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    """Get gifts sent by current user"""
+    gifts = await db.gift_records.find(
+        {"sender_id": current_user.user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Get receiver details
+    for gift in gifts:
+        receiver = await db.users.find_one(
+            {"user_id": gift["receiver_id"]},
+            {"_id": 0, "name": 1, "picture": 1}
+        )
+        gift["receiver"] = receiver
+    
+    return {"gifts": gifts}
+
+@api_router.get("/gifts/received")
+async def get_received_gifts(
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    """Get gifts received by current user"""
+    gifts = await db.gift_records.find(
+        {"receiver_id": current_user.user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Get sender details
+    for gift in gifts:
+        sender = await db.users.find_one(
+            {"user_id": gift["sender_id"]},
+            {"_id": 0, "name": 1, "picture": 1}
+        )
+        gift["sender"] = sender
+    
+    return {"gifts": gifts}
+
+@api_router.get("/gifts/leaderboard")
+async def get_gift_leaderboard():
+    """Get top gift senders and receivers"""
+    # Top senders
+    sender_pipeline = [
+        {"$group": {
+            "_id": "$sender_id",
+            "total_sent": {"$sum": "$total_value"},
+            "gifts_count": {"$sum": "$quantity"}
+        }},
+        {"$sort": {"total_sent": -1}},
+        {"$limit": 10}
+    ]
+    
+    top_senders = await db.gift_records.aggregate(sender_pipeline).to_list(10)
+    
+    # Top receivers
+    receiver_pipeline = [
+        {"$group": {
+            "_id": "$receiver_id",
+            "total_received": {"$sum": "$total_value"},
+            "gifts_count": {"$sum": "$quantity"}
+        }},
+        {"$sort": {"total_received": -1}},
+        {"$limit": 10}
+    ]
+    
+    top_receivers = await db.gift_records.aggregate(receiver_pipeline).to_list(10)
+    
+    # Get user details
+    senders_leaderboard = []
+    for i, sender in enumerate(top_senders):
+        user = await db.users.find_one(
+            {"user_id": sender["_id"]},
+            {"_id": 0, "user_id": 1, "name": 1, "picture": 1}
+        )
+        if user:
+            senders_leaderboard.append({
+                "rank": i + 1,
+                "user": user,
+                "total_sent": sender["total_sent"],
+                "gifts_count": sender["gifts_count"]
+            })
+    
+    receivers_leaderboard = []
+    for i, receiver in enumerate(top_receivers):
+        user = await db.users.find_one(
+            {"user_id": receiver["_id"]},
+            {"_id": 0, "user_id": 1, "name": 1, "picture": 1}
+        )
+        if user:
+            receivers_leaderboard.append({
+                "rank": i + 1,
+                "user": user,
+                "total_received": receiver["total_received"],
+                "gifts_count": receiver["gifts_count"]
+            })
+    
+    return {
+        "top_senders": senders_leaderboard,
+        "top_receivers": receivers_leaderboard
+    }
+
+# ==================== MESSAGING REWARDS ====================
+
+@api_router.post("/messages/reward")
+async def claim_messaging_reward(
+    current_user: User = Depends(get_current_user)
+):
+    """Claim reward for chatting (20 coins per chat)"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Get today's messaging rewards count
+    rewards_today = await db.messaging_rewards.count_documents({
+        "user_id": current_user.user_id,
+        "date": today
+    })
+    
+    if rewards_today >= MESSAGING_REWARDS["max_daily_chat_rewards"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Daily limit of {MESSAGING_REWARDS['max_daily_chat_rewards']} chat rewards reached"
+        )
+    
+    reward_amount = MESSAGING_REWARDS["chat_reward"]
+    
+    # Add reward to wallet
+    await db.wallets.update_one(
+        {"user_id": current_user.user_id},
+        {
+            "$inc": {"coins_balance": reward_amount},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+    
+    # Record reward
+    await db.messaging_rewards.insert_one({
+        "reward_id": f"msg_{uuid.uuid4().hex[:12]}",
+        "user_id": current_user.user_id,
+        "reward_type": "chat",
+        "amount": reward_amount,
+        "date": today,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Create transaction
+    await db.wallet_transactions.insert_one({
+        "transaction_id": f"txn_{uuid.uuid4().hex[:12]}",
+        "user_id": current_user.user_id,
+        "transaction_type": "messaging_reward",
+        "amount": reward_amount,
+        "currency_type": "coins",
+        "status": TransactionStatus.COMPLETED,
+        "description": f"Chat reward ({rewards_today + 1}/{MESSAGING_REWARDS['max_daily_chat_rewards']})",
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    return {
+        "success": True,
+        "reward_amount": reward_amount,
+        "rewards_claimed_today": rewards_today + 1,
+        "max_daily_rewards": MESSAGING_REWARDS["max_daily_chat_rewards"]
+    }
+
+@api_router.get("/messages/reward-status")
+async def get_messaging_reward_status(current_user: User = Depends(get_current_user)):
+    """Get messaging reward status for today"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    rewards_today = await db.messaging_rewards.count_documents({
+        "user_id": current_user.user_id,
+        "date": today
+    })
+    
+    total_earned_today = rewards_today * MESSAGING_REWARDS["chat_reward"]
+    
+    return {
+        "rewards_claimed_today": rewards_today,
+        "max_daily_rewards": MESSAGING_REWARDS["max_daily_chat_rewards"],
+        "reward_per_chat": MESSAGING_REWARDS["chat_reward"],
+        "total_earned_today": total_earned_today,
+        "can_claim_more": rewards_today < MESSAGING_REWARDS["max_daily_chat_rewards"]
+    }
+
 # ==================== HEALTH CHECK ====================
 
 @api_router.get("/")
