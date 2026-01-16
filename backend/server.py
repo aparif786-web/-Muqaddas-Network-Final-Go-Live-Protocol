@@ -898,6 +898,255 @@ async def mark_all_notifications_read(current_user: User = Depends(get_current_u
     
     return {"success": True}
 
+# ==================== ACTIVITY REWARD SYSTEM ====================
+
+# Reward Configuration
+ACTIVITY_REWARD_CONFIG = {
+    "minutes_required": 15,
+    "coins_reward": 200,
+    "max_daily_rewards": 6,  # Maximum rewards per day (6 x 15 mins = 90 mins max)
+    "daily_bonus_coins": 50,  # Bonus for first activity of the day
+}
+
+class ActivitySession(BaseModel):
+    session_id: str
+    user_id: str
+    started_at: datetime
+    last_active_at: datetime
+    total_active_minutes: int = 0
+    rewards_claimed: int = 0
+    date: str  # YYYY-MM-DD format for daily tracking
+
+@api_router.get("/rewards/activity-status")
+async def get_activity_status(current_user: User = Depends(get_current_user)):
+    """Get user's current activity status and progress towards reward"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Get or create today's activity session
+    activity = await db.activity_sessions.find_one(
+        {"user_id": current_user.user_id, "date": today},
+        {"_id": 0}
+    )
+    
+    if not activity:
+        activity = {
+            "session_id": f"activity_{uuid.uuid4().hex[:12]}",
+            "user_id": current_user.user_id,
+            "started_at": datetime.now(timezone.utc),
+            "last_active_at": datetime.now(timezone.utc),
+            "total_active_minutes": 0,
+            "rewards_claimed": 0,
+            "date": today
+        }
+        await db.activity_sessions.insert_one(activity)
+    
+    # Calculate progress
+    minutes_towards_next = activity["total_active_minutes"] % ACTIVITY_REWARD_CONFIG["minutes_required"]
+    rewards_available = min(
+        (activity["total_active_minutes"] // ACTIVITY_REWARD_CONFIG["minutes_required"]) - activity["rewards_claimed"],
+        ACTIVITY_REWARD_CONFIG["max_daily_rewards"] - activity["rewards_claimed"]
+    )
+    
+    return {
+        "today": today,
+        "total_active_minutes": activity["total_active_minutes"],
+        "minutes_towards_next": minutes_towards_next,
+        "minutes_required": ACTIVITY_REWARD_CONFIG["minutes_required"],
+        "progress_percent": (minutes_towards_next / ACTIVITY_REWARD_CONFIG["minutes_required"]) * 100,
+        "rewards_claimed_today": activity["rewards_claimed"],
+        "rewards_available": max(0, rewards_available),
+        "max_daily_rewards": ACTIVITY_REWARD_CONFIG["max_daily_rewards"],
+        "coins_per_reward": ACTIVITY_REWARD_CONFIG["coins_reward"]
+    }
+
+@api_router.post("/rewards/track-activity")
+async def track_activity(
+    current_user: User = Depends(get_current_user)
+):
+    """Track user activity - call every minute from frontend"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    now = datetime.now(timezone.utc)
+    
+    # Get or create today's activity session
+    activity = await db.activity_sessions.find_one(
+        {"user_id": current_user.user_id, "date": today},
+        {"_id": 0}
+    )
+    
+    if not activity:
+        activity = {
+            "session_id": f"activity_{uuid.uuid4().hex[:12]}",
+            "user_id": current_user.user_id,
+            "started_at": now,
+            "last_active_at": now,
+            "total_active_minutes": 1,
+            "rewards_claimed": 0,
+            "date": today
+        }
+        await db.activity_sessions.insert_one(activity)
+    else:
+        # Update activity
+        await db.activity_sessions.update_one(
+            {"user_id": current_user.user_id, "date": today},
+            {
+                "$set": {"last_active_at": now},
+                "$inc": {"total_active_minutes": 1}
+            }
+        )
+        activity["total_active_minutes"] += 1
+    
+    # Check if reward is available
+    rewards_earned = activity["total_active_minutes"] // ACTIVITY_REWARD_CONFIG["minutes_required"]
+    rewards_available = min(
+        rewards_earned - activity["rewards_claimed"],
+        ACTIVITY_REWARD_CONFIG["max_daily_rewards"] - activity["rewards_claimed"]
+    )
+    
+    return {
+        "success": True,
+        "total_active_minutes": activity["total_active_minutes"],
+        "rewards_available": max(0, rewards_available),
+        "can_claim": rewards_available > 0
+    }
+
+@api_router.post("/rewards/claim-activity-reward")
+async def claim_activity_reward(current_user: User = Depends(get_current_user)):
+    """Claim activity reward after 15 minutes of activity"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    activity = await db.activity_sessions.find_one(
+        {"user_id": current_user.user_id, "date": today},
+        {"_id": 0}
+    )
+    
+    if not activity:
+        raise HTTPException(status_code=400, detail="No activity recorded today")
+    
+    # Check if reward is available
+    rewards_earned = activity["total_active_minutes"] // ACTIVITY_REWARD_CONFIG["minutes_required"]
+    rewards_available = min(
+        rewards_earned - activity["rewards_claimed"],
+        ACTIVITY_REWARD_CONFIG["max_daily_rewards"] - activity["rewards_claimed"]
+    )
+    
+    if rewards_available <= 0:
+        raise HTTPException(status_code=400, detail="No rewards available to claim")
+    
+    # Check if reached daily limit
+    if activity["rewards_claimed"] >= ACTIVITY_REWARD_CONFIG["max_daily_rewards"]:
+        raise HTTPException(status_code=400, detail="Daily reward limit reached")
+    
+    # Calculate reward amount
+    reward_amount = ACTIVITY_REWARD_CONFIG["coins_reward"]
+    is_first_reward = activity["rewards_claimed"] == 0
+    
+    # Add daily bonus for first reward
+    if is_first_reward:
+        reward_amount += ACTIVITY_REWARD_CONFIG["daily_bonus_coins"]
+    
+    # Update activity rewards claimed
+    await db.activity_sessions.update_one(
+        {"user_id": current_user.user_id, "date": today},
+        {"$inc": {"rewards_claimed": 1}}
+    )
+    
+    # Add reward to wallet
+    wallet = await db.wallets.find_one_and_update(
+        {"user_id": current_user.user_id},
+        {
+            "$inc": {"coins_balance": reward_amount},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        },
+        return_document=True,
+        projection={"_id": 0}
+    )
+    
+    # Create transaction
+    transaction_id = f"txn_{uuid.uuid4().hex[:12]}"
+    description = f"Activity reward ({activity['rewards_claimed'] + 1}/{ACTIVITY_REWARD_CONFIG['max_daily_rewards']})"
+    if is_first_reward:
+        description += " + Daily bonus"
+    
+    await db.wallet_transactions.insert_one({
+        "transaction_id": transaction_id,
+        "user_id": current_user.user_id,
+        "transaction_type": TransactionType.ACTIVITY_REWARD,
+        "amount": reward_amount,
+        "currency_type": "coins",
+        "status": TransactionStatus.COMPLETED,
+        "description": description,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Add notification
+    await db.notifications.insert_one({
+        "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+        "user_id": current_user.user_id,
+        "title": "Activity Reward Claimed! 🎉",
+        "message": f"You earned {reward_amount} coins for being active!",
+        "notification_type": "reward",
+        "is_read": False,
+        "action_url": "/rewards",
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    return {
+        "success": True,
+        "reward_amount": reward_amount,
+        "is_first_reward": is_first_reward,
+        "daily_bonus_included": is_first_reward,
+        "rewards_claimed_today": activity["rewards_claimed"] + 1,
+        "wallet_balance": wallet["coins_balance"],
+        "transaction_id": transaction_id
+    }
+
+@api_router.get("/rewards/daily-summary")
+async def get_daily_summary(current_user: User = Depends(get_current_user)):
+    """Get summary of daily rewards and activity"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Get activity for last 7 days
+    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    
+    activities = await db.activity_sessions.find(
+        {
+            "user_id": current_user.user_id,
+            "date": {"$gte": seven_days_ago}
+        },
+        {"_id": 0}
+    ).to_list(7)
+    
+    # Get today's transactions
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_rewards = await db.wallet_transactions.find(
+        {
+            "user_id": current_user.user_id,
+            "transaction_type": TransactionType.ACTIVITY_REWARD,
+            "created_at": {"$gte": today_start}
+        },
+        {"_id": 0}
+    ).to_list(20)
+    
+    total_earned_today = sum(t["amount"] for t in today_rewards)
+    
+    # Calculate streak
+    streak = 0
+    sorted_activities = sorted(activities, key=lambda x: x["date"], reverse=True)
+    for activity in sorted_activities:
+        if activity["rewards_claimed"] > 0:
+            streak += 1
+        else:
+            break
+    
+    return {
+        "today": today,
+        "total_earned_today": total_earned_today,
+        "rewards_today": len(today_rewards),
+        "activity_streak": streak,
+        "weekly_activities": activities,
+        "config": ACTIVITY_REWARD_CONFIG
+    }
+
 # ==================== HEALTH CHECK ====================
 
 @api_router.get("/")
