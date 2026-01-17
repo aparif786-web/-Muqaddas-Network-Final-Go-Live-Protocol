@@ -194,7 +194,7 @@ export default function EducationScreen() {
       case 'life skills':
         return 'heart';
       case 'mind games':
-        return 'heart-circle';
+        return 'bulb'; // Gyan Yuddh icon
       default:
         return 'school';
     }
