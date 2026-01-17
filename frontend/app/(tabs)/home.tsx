@@ -202,7 +202,7 @@ export default function HomeScreen() {
                   onPress={() => router.push('/(tabs)/wallet')}
                 >
                   <LinearGradient
-                    colors={["#4CAF50', '#45a049"] as const}
+                    colors={['#4CAF50', '#45a049']}
                     style={styles.actionIconContainer}
                   >
                     <Ionicons name="add" size={24} color="#FFFFFF" />
@@ -212,23 +212,10 @@ export default function HomeScreen() {
 
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => router.push('/(tabs)/wallet')}
-                >
-                  <LinearGradient
-                    colors={["#2196F3', '#1976D2"] as const}
-                    style={styles.actionIconContainer}
-                  >
-                    <Ionicons name="arrow-up" size={24} color="#FFFFFF" />
-                  </LinearGradient>
-                  <Text style={styles.actionText}>Withdraw</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionButton}
                   onPress={() => router.push('/(tabs)/vip')}
                 >
                   <LinearGradient
-                    colors={["#FFD700', '#FFA500"] as const}
+                    colors={['#FFD700', '#FFA500']}
                     style={styles.actionIconContainer}
                   >
                     <Ionicons name="diamond" size={24} color="#1A1A2E" />
@@ -236,14 +223,30 @@ export default function HomeScreen() {
                   <Text style={styles.actionText}>VIP</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.actionButton}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push('/(tabs)/rewards')}
+                >
                   <LinearGradient
-                    colors={["#9C27B0', '#7B1FA2"] as const}
+                    colors={['#9C27B0', '#7B1FA2']}
                     style={styles.actionIconContainer}
                   >
-                    <Ionicons name="game-controller" size={24} color="#FFFFFF" />
+                    <Ionicons name="trophy" size={24} color="#FFFFFF" />
                   </LinearGradient>
-                  <Text style={styles.actionText}>Games</Text>
+                  <Text style={styles.actionText}>Gyan Yuddh</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push('/(tabs)/education')}
+                >
+                  <LinearGradient
+                    colors={['#2196F3', '#1976D2']}
+                    style={styles.actionIconContainer}
+                  >
+                    <Ionicons name="school" size={24} color="#FFFFFF" />
+                  </LinearGradient>
+                  <Text style={styles.actionText}>Learn</Text>
                 </TouchableOpacity>
               </View>
             </View>
