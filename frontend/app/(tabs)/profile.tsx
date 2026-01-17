@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,7 +29,16 @@ interface Wallet {
   coins_balance: number;
   bonus_balance: number;
   stars_balance: number;
+  withdrawable_balance: number;
 }
+
+export default function ProfileScreen() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const [vipStatus, setVipStatus] = useState<VIPStatus | null>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
