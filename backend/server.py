@@ -3648,6 +3648,623 @@ async def get_education_leaderboard():
     
     return {"leaderboard": leaderboard}
 
+
+# ==================== PHASE 1: LOGIC PK SYSTEM (WITH BETTING) ====================
+
+class LogicPKChallenge(BaseModel):
+    challenge_id: str
+    challenger_id: str
+    opponent_id: str
+    bet_amount: int
+    status: str = "pending"  # pending, accepted, in_progress, completed, cancelled
+    question: Optional[dict] = None
+    challenger_answer: Optional[str] = None
+    opponent_answer: Optional[str] = None
+    winner_id: Optional[str] = None
+    created_at: datetime
+
+# Logic PK Questions Bank
+LOGIC_PK_QUESTIONS = [
+    {
+        "id": "q1",
+        "question": "Agar 5 machines 5 minutes mein 5 widgets banati hain, toh 100 machines 100 minutes mein kitne widgets banayengi?",
+        "options": ["100", "500", "1000", "2000"],
+        "correct": "2000",
+        "difficulty": "medium",
+        "category": "logic"
+    },
+    {
+        "id": "q2",
+        "question": "Ek doctor ne kaha: 'Jo ladka hai wo mera beta hai, lekin main uska baap nahi.' Doctor kaun hai?",
+        "options": ["Chacha", "Dada", "Maa", "Bhai"],
+        "correct": "Maa",
+        "difficulty": "easy",
+        "category": "riddle"
+    },
+    {
+        "id": "q3",
+        "question": "3 friends ne ₹300 ka pizza liya. Har ek ne ₹100 diye. Waiter ne ₹50 wapas kiye. ₹20 tip mein gaye, ₹30 wapas. Har ek ko ₹10 mila. 3×90=270+20=290. ₹10 kahan gaye?",
+        "options": ["Waiter ke paas", "Kahin nahi gaye", "Pizza mein", "Yeh puzzle hai"],
+        "correct": "Kahin nahi gaye",
+        "difficulty": "hard",
+        "category": "math_puzzle"
+    },
+    {
+        "id": "q4",
+        "question": "Sultan ke paas 10 gold coins hain. Wo har din apne coins double karta hai. 10 din mein uske paas 10,240 coins honge. 9 din mein kitne the?",
+        "options": ["5,120", "2,560", "1,024", "512"],
+        "correct": "5,120",
+        "difficulty": "medium",
+        "category": "math"
+    },
+    {
+        "id": "q5",
+        "question": "Ek ethical dilemma: Train 5 logon ki taraf ja rahi hai. Aap lever khench kar 1 aadmi ki taraf bhej sakte ho. Kya karoge?",
+        "options": ["Lever kheenchna", "Kuch nahi karna", "Train rok dena", "Bhag jana"],
+        "correct": "Lever kheenchna",
+        "difficulty": "hard",
+        "category": "ethics"
+    }
+]
+
+@api_router.post("/logic-pk/create-challenge")
+async def create_logic_pk_challenge(
+    opponent_id: str,
+    bet_amount: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a Logic PK challenge with betting"""
+    
+    # Betting limits
+    MIN_BET = 10
+    MAX_BET = 1000
+    MAX_BET_PERCENTAGE = 0.20  # 20% of total coins
+    
+    if bet_amount < MIN_BET:
+        raise HTTPException(status_code=400, detail=f"Minimum bet is {MIN_BET} coins")
+    
+    if bet_amount > MAX_BET:
+        raise HTTPException(status_code=400, detail=f"Maximum bet is {MAX_BET} coins")
+    
+    # Check user's wallet
+    wallet = await db.wallets.find_one({"user_id": current_user.user_id})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    user_coins = wallet.get("coins_balance", 0)
+    
+    # Check 20% limit
+    if bet_amount > user_coins * MAX_BET_PERCENTAGE:
+        raise HTTPException(status_code=400, detail=f"Bet cannot exceed 20% of your balance ({int(user_coins * MAX_BET_PERCENTAGE)} coins)")
+    
+    if user_coins < bet_amount:
+        raise HTTPException(status_code=400, detail="Insufficient coins")
+    
+    # Check consecutive losses (anti-addiction)
+    recent_losses = await db.logic_pk_history.count_documents({
+        "user_id": current_user.user_id,
+        "result": "loss",
+        "created_at": {"$gte": datetime.now(timezone.utc) - timedelta(hours=24)}
+    })
+    
+    if recent_losses >= 3:
+        raise HTTPException(status_code=400, detail="24-hour betting cooldown active due to consecutive losses")
+    
+    # Create challenge
+    challenge_id = str(uuid.uuid4())
+    challenge = {
+        "challenge_id": challenge_id,
+        "challenger_id": current_user.user_id,
+        "opponent_id": opponent_id,
+        "bet_amount": bet_amount,
+        "status": "pending",
+        "question": random.choice(LOGIC_PK_QUESTIONS),
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    await db.logic_pk_challenges.insert_one(challenge)
+    
+    # Hold bet amount from challenger
+    await db.wallets.update_one(
+        {"user_id": current_user.user_id},
+        {"$inc": {"coins_balance": -bet_amount, "held_balance": bet_amount}}
+    )
+    
+    return {
+        "challenge_id": challenge_id,
+        "message": f"Challenge sent! Bet amount: {bet_amount} coins",
+        "question": challenge["question"]["question"],
+        "options": challenge["question"]["options"]
+    }
+
+@api_router.post("/logic-pk/accept-challenge/{challenge_id}")
+async def accept_logic_pk_challenge(
+    challenge_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Accept a Logic PK challenge"""
+    challenge = await db.logic_pk_challenges.find_one({"challenge_id": challenge_id})
+    
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    if challenge["opponent_id"] != current_user.user_id:
+        raise HTTPException(status_code=403, detail="This challenge is not for you")
+    
+    if challenge["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Challenge already processed")
+    
+    # Check opponent's wallet
+    wallet = await db.wallets.find_one({"user_id": current_user.user_id})
+    if not wallet or wallet.get("coins_balance", 0) < challenge["bet_amount"]:
+        raise HTTPException(status_code=400, detail="Insufficient coins to accept challenge")
+    
+    # Hold bet amount from opponent
+    await db.wallets.update_one(
+        {"user_id": current_user.user_id},
+        {"$inc": {"coins_balance": -challenge["bet_amount"], "held_balance": challenge["bet_amount"]}}
+    )
+    
+    await db.logic_pk_challenges.update_one(
+        {"challenge_id": challenge_id},
+        {"$set": {"status": "in_progress"}}
+    )
+    
+    return {
+        "message": "Challenge accepted!",
+        "question": challenge["question"]["question"],
+        "options": challenge["question"]["options"],
+        "time_limit": 60  # seconds
+    }
+
+@api_router.post("/logic-pk/submit-answer/{challenge_id}")
+async def submit_logic_pk_answer(
+    challenge_id: str,
+    answer: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Submit answer for Logic PK challenge"""
+    challenge = await db.logic_pk_challenges.find_one({"challenge_id": challenge_id})
+    
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    is_challenger = challenge["challenger_id"] == current_user.user_id
+    is_opponent = challenge["opponent_id"] == current_user.user_id
+    
+    if not is_challenger and not is_opponent:
+        raise HTTPException(status_code=403, detail="You are not part of this challenge")
+    
+    # Store answer
+    field = "challenger_answer" if is_challenger else "opponent_answer"
+    await db.logic_pk_challenges.update_one(
+        {"challenge_id": challenge_id},
+        {"$set": {field: answer}}
+    )
+    
+    # Check if both answered
+    challenge = await db.logic_pk_challenges.find_one({"challenge_id": challenge_id})
+    
+    if challenge.get("challenger_answer") and challenge.get("opponent_answer"):
+        # Determine winner
+        correct_answer = challenge["question"]["correct"]
+        challenger_correct = challenge["challenger_answer"] == correct_answer
+        opponent_correct = challenge["opponent_answer"] == correct_answer
+        
+        winner_id = None
+        if challenger_correct and not opponent_correct:
+            winner_id = challenge["challenger_id"]
+        elif opponent_correct and not challenger_correct:
+            winner_id = challenge["opponent_id"]
+        elif challenger_correct and opponent_correct:
+            winner_id = "tie"
+        
+        # Distribute rewards
+        total_pot = challenge["bet_amount"] * 2
+        platform_fee = int(total_pot * 0.10)  # 10% platform fee
+        winner_prize = total_pot - platform_fee
+        consolation = 50  # Loser gets 50 coins consolation
+        
+        if winner_id and winner_id != "tie":
+            loser_id = challenge["opponent_id"] if winner_id == challenge["challenger_id"] else challenge["challenger_id"]
+            
+            # Winner gets 90% of pot
+            await db.wallets.update_one(
+                {"user_id": winner_id},
+                {"$inc": {"coins_balance": winner_prize, "held_balance": -challenge["bet_amount"]}}
+            )
+            
+            # Loser gets consolation
+            await db.wallets.update_one(
+                {"user_id": loser_id},
+                {"$inc": {"coins_balance": consolation, "held_balance": -challenge["bet_amount"]}}
+            )
+            
+            # Record history
+            await db.logic_pk_history.insert_one({
+                "user_id": winner_id,
+                "challenge_id": challenge_id,
+                "result": "win",
+                "coins_won": winner_prize,
+                "created_at": datetime.now(timezone.utc)
+            })
+            await db.logic_pk_history.insert_one({
+                "user_id": loser_id,
+                "challenge_id": challenge_id,
+                "result": "loss",
+                "coins_lost": challenge["bet_amount"] - consolation,
+                "created_at": datetime.now(timezone.utc)
+            })
+        else:
+            # Tie - return bets
+            await db.wallets.update_one(
+                {"user_id": challenge["challenger_id"]},
+                {"$inc": {"coins_balance": challenge["bet_amount"], "held_balance": -challenge["bet_amount"]}}
+            )
+            await db.wallets.update_one(
+                {"user_id": challenge["opponent_id"]},
+                {"$inc": {"coins_balance": challenge["bet_amount"], "held_balance": -challenge["bet_amount"]}}
+            )
+        
+        await db.logic_pk_challenges.update_one(
+            {"challenge_id": challenge_id},
+            {"$set": {"status": "completed", "winner_id": winner_id}}
+        )
+        
+        return {
+            "status": "completed",
+            "winner": winner_id,
+            "correct_answer": correct_answer,
+            "prize": winner_prize if winner_id and winner_id != "tie" else 0
+        }
+    
+    return {"status": "waiting", "message": "Waiting for opponent's answer"}
+
+@api_router.get("/logic-pk/challenges")
+async def get_logic_pk_challenges(current_user: dict = Depends(get_current_user)):
+    """Get pending challenges for user"""
+    challenges = await db.logic_pk_challenges.find({
+        "$or": [
+            {"challenger_id": current_user.user_id},
+            {"opponent_id": current_user.user_id}
+        ],
+        "status": {"$in": ["pending", "in_progress"]}
+    }).to_list(20)
+    
+    for c in challenges:
+        c["_id"] = str(c["_id"])
+    
+    return {"challenges": challenges}
+
+# ==================== PHASE 1: DAILY MISSIONS ====================
+
+DAILY_MISSIONS = [
+    {
+        "mission_id": "complete_video",
+        "title": "Watch 1 Course Video",
+        "description": "Complete watching any course video",
+        "reward_coins": 50,
+        "target": 1,
+        "type": "video"
+    },
+    {
+        "mission_id": "solve_questions",
+        "title": "Solve 10 Questions",
+        "description": "Answer 10 quiz questions",
+        "reward_coins": 30,
+        "target": 10,
+        "type": "quiz"
+    },
+    {
+        "mission_id": "help_friend",
+        "title": "Help a Friend",
+        "description": "Answer someone's doubt in community",
+        "reward_coins": 20,
+        "target": 1,
+        "type": "social"
+    },
+    {
+        "mission_id": "study_time",
+        "title": "Study for 30 Minutes",
+        "description": "Spend 30 minutes learning",
+        "reward_coins": 40,
+        "target": 30,
+        "type": "time"
+    },
+    {
+        "mission_id": "gyan_yuddh",
+        "title": "Play Gyan Yuddh",
+        "description": "Complete 1 mind game",
+        "reward_coins": 25,
+        "target": 1,
+        "type": "game"
+    }
+]
+
+@api_router.get("/daily-missions")
+async def get_daily_missions(current_user: dict = Depends(get_current_user)):
+    """Get user's daily missions with progress"""
+    today = datetime.now(timezone.utc).date()
+    
+    # Get or create today's mission progress
+    progress = await db.daily_mission_progress.find_one({
+        "user_id": current_user.user_id,
+        "date": str(today)
+    })
+    
+    if not progress:
+        progress = {
+            "user_id": current_user.user_id,
+            "date": str(today),
+            "missions": {m["mission_id"]: {"progress": 0, "completed": False, "claimed": False} for m in DAILY_MISSIONS},
+            "all_completed_bonus_claimed": False
+        }
+        await db.daily_mission_progress.insert_one(progress)
+    
+    missions_with_progress = []
+    for mission in DAILY_MISSIONS:
+        mp = progress["missions"].get(mission["mission_id"], {"progress": 0, "completed": False, "claimed": False})
+        missions_with_progress.append({
+            **mission,
+            "progress": mp["progress"],
+            "completed": mp["completed"],
+            "claimed": mp["claimed"]
+        })
+    
+    all_completed = all(m["completed"] for m in missions_with_progress)
+    
+    return {
+        "date": str(today),
+        "missions": missions_with_progress,
+        "all_completed": all_completed,
+        "all_completed_bonus": 100,
+        "all_completed_bonus_claimed": progress.get("all_completed_bonus_claimed", False)
+    }
+
+@api_router.post("/daily-missions/update-progress")
+async def update_mission_progress(
+    mission_id: str,
+    progress_amount: int = 1,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update progress for a daily mission"""
+    today = datetime.now(timezone.utc).date()
+    
+    mission = next((m for m in DAILY_MISSIONS if m["mission_id"] == mission_id), None)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    
+    progress = await db.daily_mission_progress.find_one({
+        "user_id": current_user.user_id,
+        "date": str(today)
+    })
+    
+    if not progress:
+        progress = {
+            "user_id": current_user.user_id,
+            "date": str(today),
+            "missions": {m["mission_id"]: {"progress": 0, "completed": False, "claimed": False} for m in DAILY_MISSIONS},
+            "all_completed_bonus_claimed": False
+        }
+        await db.daily_mission_progress.insert_one(progress)
+    
+    current_progress = progress["missions"].get(mission_id, {"progress": 0, "completed": False, "claimed": False})
+    new_progress = min(current_progress["progress"] + progress_amount, mission["target"])
+    completed = new_progress >= mission["target"]
+    
+    await db.daily_mission_progress.update_one(
+        {"user_id": current_user.user_id, "date": str(today)},
+        {"$set": {f"missions.{mission_id}.progress": new_progress, f"missions.{mission_id}.completed": completed}}
+    )
+    
+    return {
+        "mission_id": mission_id,
+        "progress": new_progress,
+        "target": mission["target"],
+        "completed": completed
+    }
+
+@api_router.post("/daily-missions/claim/{mission_id}")
+async def claim_mission_reward(
+    mission_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Claim reward for completed mission"""
+    today = datetime.now(timezone.utc).date()
+    
+    mission = next((m for m in DAILY_MISSIONS if m["mission_id"] == mission_id), None)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    
+    progress = await db.daily_mission_progress.find_one({
+        "user_id": current_user.user_id,
+        "date": str(today)
+    })
+    
+    if not progress:
+        raise HTTPException(status_code=400, detail="No mission progress found")
+    
+    mp = progress["missions"].get(mission_id, {})
+    
+    if not mp.get("completed"):
+        raise HTTPException(status_code=400, detail="Mission not completed")
+    
+    if mp.get("claimed"):
+        raise HTTPException(status_code=400, detail="Reward already claimed")
+    
+    # Give reward
+    await db.wallets.update_one(
+        {"user_id": current_user.user_id},
+        {"$inc": {"coins_balance": mission["reward_coins"]}}
+    )
+    
+    await db.daily_mission_progress.update_one(
+        {"user_id": current_user.user_id, "date": str(today)},
+        {"$set": {f"missions.{mission_id}.claimed": True}}
+    )
+    
+    return {
+        "message": f"Claimed {mission['reward_coins']} coins!",
+        "coins_earned": mission["reward_coins"]
+    }
+
+@api_router.post("/daily-missions/claim-all-bonus")
+async def claim_all_missions_bonus(current_user: dict = Depends(get_current_user)):
+    """Claim bonus for completing all daily missions"""
+    today = datetime.now(timezone.utc).date()
+    
+    progress = await db.daily_mission_progress.find_one({
+        "user_id": current_user.user_id,
+        "date": str(today)
+    })
+    
+    if not progress:
+        raise HTTPException(status_code=400, detail="No mission progress found")
+    
+    all_completed = all(progress["missions"][m["mission_id"]]["completed"] for m in DAILY_MISSIONS)
+    
+    if not all_completed:
+        raise HTTPException(status_code=400, detail="Not all missions completed")
+    
+    if progress.get("all_completed_bonus_claimed"):
+        raise HTTPException(status_code=400, detail="Bonus already claimed")
+    
+    # Give 100 coins bonus
+    await db.wallets.update_one(
+        {"user_id": current_user.user_id},
+        {"$inc": {"coins_balance": 100}}
+    )
+    
+    await db.daily_mission_progress.update_one(
+        {"user_id": current_user.user_id, "date": str(today)},
+        {"$set": {"all_completed_bonus_claimed": True}}
+    )
+    
+    return {
+        "message": "Congratulations! All missions completed! +100 bonus coins!",
+        "bonus_coins": 100
+    }
+
+# ==================== PHASE 1: 5-CATEGORY LEADERBOARD ====================
+
+@api_router.get("/leaderboard/multi-category")
+async def get_multi_category_leaderboard():
+    """Get 5-category leaderboard with auto-rewards info"""
+    
+    # 1. Education Rank (Most learning hours)
+    education_leaders = await db.education_profiles.find().sort("total_learning_hours", -1).limit(10).to_list(10)
+    
+    # 2. Logic Rank (Best Logic PK win rate)
+    logic_pipeline = [
+        {"$match": {"result": "win"}},
+        {"$group": {"_id": "$user_id", "wins": {"$sum": 1}}},
+        {"$sort": {"wins": -1}},
+        {"$limit": 10}
+    ]
+    logic_leaders = await db.logic_pk_history.aggregate(logic_pipeline).to_list(10)
+    
+    # 3. Charity Rank (Most charity contributions)
+    charity_pipeline = [
+        {"$group": {"_id": "$user_id", "total_charity": {"$sum": "$charity_amount"}}},
+        {"$sort": {"total_charity": -1}},
+        {"$limit": 10}
+    ]
+    charity_leaders = await db.charity_contributions.aggregate(charity_pipeline).to_list(10)
+    
+    # 4. Unity Rank (Most helpful in community)
+    unity_pipeline = [
+        {"$group": {"_id": "$helper_id", "help_count": {"$sum": 1}}},
+        {"$sort": {"help_count": -1}},
+        {"$limit": 10}
+    ]
+    unity_leaders = await db.community_help.aggregate(unity_pipeline).to_list(10)
+    
+    # 5. Global Sultan Rank (Combined score)
+    global_pipeline = [
+        {"$group": {
+            "_id": "$user_id",
+            "total_score": {"$sum": "$score_points"}
+        }},
+        {"$sort": {"total_score": -1}},
+        {"$limit": 10}
+    ]
+    global_leaders = await db.user_scores.aggregate(global_pipeline).to_list(10)
+    
+    # Get user details for each leaderboard
+    async def enrich_leaderboard(leaders, id_field="_id", score_field="total"):
+        enriched = []
+        for i, leader in enumerate(leaders):
+            user = await db.users.find_one({"user_id": leader[id_field]})
+            if user:
+                # Get charity wallet balance
+                charity_wallet = await db.charity_wallets.find_one({"user_id": leader[id_field]})
+                enriched.append({
+                    "rank": i + 1,
+                    "user_id": leader[id_field],
+                    "name": user.get("name", "Unknown"),
+                    "score": leader.get(score_field, leader.get("wins", leader.get("total_charity", leader.get("help_count", 0)))),
+                    "charity_wallet": charity_wallet.get("balance", 0) if charity_wallet else 0
+                })
+        return enriched
+    
+    return {
+        "education": await enrich_leaderboard(education_leaders, "user_id", "total_learning_hours"),
+        "logic": await enrich_leaderboard(logic_leaders, "_id", "wins"),
+        "charity": await enrich_leaderboard(charity_leaders, "_id", "total_charity"),
+        "unity": await enrich_leaderboard(unity_leaders, "_id", "help_count"),
+        "global_sultan": await enrich_leaderboard(global_leaders, "_id", "total_score"),
+        "rewards": {
+            "daily": {"top1": 500, "top2": 300, "top3": 200},
+            "weekly": {"top1": 5000, "top2": 3000, "top3": 2000, "top4_10": 1000},
+            "monthly": {"top1": 5000, "top2": 3000, "top3": 2000, "top4_10": 500}
+        },
+        "next_reset": {
+            "daily": "12:00 AM",
+            "weekly": "Monday 12:00 AM",
+            "monthly": "1st of month 12:00 AM"
+        }
+    }
+
+# ==================== CHARITY 10B TRIGGER ====================
+
+PLATFORM_CONFIG = {
+    "total_revenue": 0,  # Will be fetched from DB
+    "charity_threshold": 10_000_000_000,  # 10 Billion
+    "current_charity_rate": 0.02,  # 2%
+    "post_threshold_charity_rate": 0.35  # 35%
+}
+
+@api_router.get("/platform/charity-config")
+async def get_charity_config():
+    """Get current charity configuration based on revenue"""
+    platform_stats = await db.platform_stats.find_one({"stat_id": "main"})
+    
+    if not platform_stats:
+        platform_stats = {
+            "stat_id": "main",
+            "total_revenue": 0,
+            "total_charity_collected": 0,
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.platform_stats.insert_one(platform_stats)
+    
+    total_revenue = platform_stats.get("total_revenue", 0)
+    threshold_reached = total_revenue >= PLATFORM_CONFIG["charity_threshold"]
+    
+    current_rate = PLATFORM_CONFIG["post_threshold_charity_rate"] if threshold_reached else PLATFORM_CONFIG["current_charity_rate"]
+    
+    return {
+        "total_revenue": total_revenue,
+        "charity_threshold": PLATFORM_CONFIG["charity_threshold"],
+        "threshold_reached": threshold_reached,
+        "current_charity_rate": current_rate,
+        "charity_rate_display": f"{int(current_rate * 100)}%",
+        "total_charity_collected": platform_stats.get("total_charity_collected", 0),
+        "message": "35% Charity Mode Active! 🎉" if threshold_reached else f"Currently at {int(current_rate * 100)}% charity rate"
+    }
+
+
+
 # ==================== HEALTH CHECK ====================
 
 @api_router.get("/")
