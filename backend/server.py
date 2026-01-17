@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
 import random
+from openai import AsyncOpenAI
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -22,6 +23,13 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# Emergent LLM Key for AI Teacher
+EMERGENT_LLM_KEY = "sk-emergent-89e7765DbCfE5E9Da8"
+openai_client = AsyncOpenAI(
+    api_key=EMERGENT_LLM_KEY,
+    base_url="https://api.emergentmethods.ai/v1"
+)
 
 # Create the main app
 app = FastAPI()
