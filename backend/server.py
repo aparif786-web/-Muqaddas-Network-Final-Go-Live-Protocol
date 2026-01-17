@@ -4264,6 +4264,257 @@ async def get_charity_config():
     }
 
 
+# ==================== STAR TO COINS EXCHANGE SYSTEM ====================
+
+# Exchange Configuration
+STAR_EXCHANGE_CONFIG = {
+    "rate": 0.92,  # 1 Star = 0.92 Coins
+    "fee_percentage": 8,  # 8% platform fee
+    "minimum_stars": 1000,
+    "maximum_stars": None,  # No maximum
+    "daily_limit": 1000000,  # 10 Lakh stars per day
+    "monthly_limit": 10000000  # 1 Crore stars per month
+}
+
+class StarExchangeRequest(BaseModel):
+    star_amount: int
+
+@api_router.get("/star-exchange/config")
+async def get_star_exchange_config():
+    """Get Star to Coins exchange configuration"""
+    return {
+        "exchange_rate": STAR_EXCHANGE_CONFIG["rate"],
+        "fee_percentage": STAR_EXCHANGE_CONFIG["fee_percentage"],
+        "minimum_stars": STAR_EXCHANGE_CONFIG["minimum_stars"],
+        "daily_limit": STAR_EXCHANGE_CONFIG["daily_limit"],
+        "monthly_limit": STAR_EXCHANGE_CONFIG["monthly_limit"],
+        "examples": [
+            {"stars": 1000, "coins": 920},
+            {"stars": 10000, "coins": 9200},
+            {"stars": 50000, "coins": 46000},
+            {"stars": 100000, "coins": 92000},
+            {"stars": 1000000, "coins": 920000}
+        ]
+    }
+
+@api_router.post("/star-exchange/calculate")
+async def calculate_star_exchange(request: StarExchangeRequest):
+    """Calculate exchange without executing"""
+    star_amount = request.star_amount
+    
+    if star_amount < STAR_EXCHANGE_CONFIG["minimum_stars"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Minimum {STAR_EXCHANGE_CONFIG['minimum_stars']} stars required"
+        )
+    
+    gross_coins = int(star_amount * STAR_EXCHANGE_CONFIG["rate"])
+    fee_coins = int(star_amount * STAR_EXCHANGE_CONFIG["fee_percentage"] / 100)
+    
+    return {
+        "stars_to_exchange": star_amount,
+        "exchange_rate": STAR_EXCHANGE_CONFIG["rate"],
+        "gross_coins": gross_coins,
+        "fee_coins": fee_coins,
+        "net_coins": gross_coins,
+        "fee_percentage": STAR_EXCHANGE_CONFIG["fee_percentage"]
+    }
+
+@api_router.post("/star-exchange/execute")
+async def execute_star_exchange(
+    request: StarExchangeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Execute Star to Coins exchange"""
+    star_amount = request.star_amount
+    
+    # Validate minimum
+    if star_amount < STAR_EXCHANGE_CONFIG["minimum_stars"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Minimum {STAR_EXCHANGE_CONFIG['minimum_stars']} stars required"
+        )
+    
+    # Get user's wallet
+    wallet = await db.wallets.find_one({"user_id": current_user.user_id})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    current_stars = wallet.get("stars_balance", 0)
+    
+    # Check sufficient stars
+    if current_stars < star_amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient stars. You have {current_stars} stars"
+        )
+    
+    # Check daily limit
+    today = datetime.now(timezone.utc).date()
+    today_exchanges = await db.star_exchanges.aggregate([
+        {
+            "$match": {
+                "user_id": current_user.user_id,
+                "created_at": {"$gte": datetime.combine(today, datetime.min.time())}
+            }
+        },
+        {"$group": {"_id": None, "total": {"$sum": "$stars_exchanged"}}}
+    ]).to_list(1)
+    
+    today_total = today_exchanges[0]["total"] if today_exchanges else 0
+    
+    if today_total + star_amount > STAR_EXCHANGE_CONFIG["daily_limit"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Daily limit exceeded. You can exchange {STAR_EXCHANGE_CONFIG['daily_limit'] - today_total} more stars today"
+        )
+    
+    # Calculate exchange
+    coins_received = int(star_amount * STAR_EXCHANGE_CONFIG["rate"])
+    fee_coins = int(star_amount * STAR_EXCHANGE_CONFIG["fee_percentage"] / 100)
+    
+    # Execute exchange - Deduct stars, Add coins
+    await db.wallets.update_one(
+        {"user_id": current_user.user_id},
+        {
+            "$inc": {
+                "stars_balance": -star_amount,
+                "coins_balance": coins_received
+            }
+        }
+    )
+    
+    # Add fee to platform treasury
+    await db.platform_stats.update_one(
+        {"stat_id": "main"},
+        {
+            "$inc": {
+                "exchange_fees_collected": fee_coins,
+                "total_stars_exchanged": star_amount,
+                "total_coins_issued": coins_received
+            }
+        },
+        upsert=True
+    )
+    
+    # Log exchange transaction
+    exchange_record = {
+        "user_id": current_user.user_id,
+        "stars_exchanged": star_amount,
+        "coins_received": coins_received,
+        "fee_coins": fee_coins,
+        "exchange_rate": STAR_EXCHANGE_CONFIG["rate"],
+        "created_at": datetime.now(timezone.utc)
+    }
+    await db.star_exchanges.insert_one(exchange_record)
+    
+    # Create transaction record
+    await db.wallet_transactions.insert_one({
+        "user_id": current_user.user_id,
+        "type": "star_to_coin_exchange",
+        "stars_deducted": star_amount,
+        "coins_added": coins_received,
+        "fee": fee_coins,
+        "description": f"Exchanged {star_amount:,} Stars → {coins_received:,} Coins",
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Get updated balances
+    updated_wallet = await db.wallets.find_one({"user_id": current_user.user_id})
+    
+    return {
+        "success": True,
+        "message": f"Successfully exchanged {star_amount:,} Stars to {coins_received:,} Coins!",
+        "stars_exchanged": star_amount,
+        "coins_received": coins_received,
+        "fee_coins": fee_coins,
+        "new_star_balance": updated_wallet.get("stars_balance", 0),
+        "new_coin_balance": updated_wallet.get("coins_balance", 0)
+    }
+
+@api_router.get("/star-exchange/history")
+async def get_star_exchange_history(
+    limit: int = 20,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's star exchange history"""
+    exchanges = await db.star_exchanges.find(
+        {"user_id": current_user.user_id}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    for e in exchanges:
+        e["_id"] = str(e["_id"])
+        e["created_at"] = e["created_at"].isoformat() if e.get("created_at") else None
+    
+    # Get totals
+    totals = await db.star_exchanges.aggregate([
+        {"$match": {"user_id": current_user.user_id}},
+        {"$group": {
+            "_id": None,
+            "total_stars_exchanged": {"$sum": "$stars_exchanged"},
+            "total_coins_received": {"$sum": "$coins_received"},
+            "total_fees": {"$sum": "$fee_coins"},
+            "count": {"$sum": 1}
+        }}
+    ]).to_list(1)
+    
+    total_stats = totals[0] if totals else {
+        "total_stars_exchanged": 0,
+        "total_coins_received": 0,
+        "total_fees": 0,
+        "count": 0
+    }
+    
+    return {
+        "exchanges": exchanges,
+        "totals": {
+            "total_stars_exchanged": total_stats.get("total_stars_exchanged", 0),
+            "total_coins_received": total_stats.get("total_coins_received", 0),
+            "total_fees_paid": total_stats.get("total_fees", 0),
+            "exchange_count": total_stats.get("count", 0)
+        }
+    }
+
+@api_router.get("/star-exchange/daily-stats")
+async def get_daily_exchange_stats(current_user: dict = Depends(get_current_user)):
+    """Get today's exchange statistics for user"""
+    today = datetime.now(timezone.utc).date()
+    
+    today_stats = await db.star_exchanges.aggregate([
+        {
+            "$match": {
+                "user_id": current_user.user_id,
+                "created_at": {"$gte": datetime.combine(today, datetime.min.time())}
+            }
+        },
+        {"$group": {
+            "_id": None,
+            "today_stars_exchanged": {"$sum": "$stars_exchanged"},
+            "today_coins_received": {"$sum": "$coins_received"},
+            "exchange_count": {"$sum": 1}
+        }}
+    ]).to_list(1)
+    
+    stats = today_stats[0] if today_stats else {
+        "today_stars_exchanged": 0,
+        "today_coins_received": 0,
+        "exchange_count": 0
+    }
+    
+    remaining_daily_limit = STAR_EXCHANGE_CONFIG["daily_limit"] - stats.get("today_stars_exchanged", 0)
+    
+    return {
+        "today_stars_exchanged": stats.get("today_stars_exchanged", 0),
+        "today_coins_received": stats.get("today_coins_received", 0),
+        "exchange_count": stats.get("exchange_count", 0),
+        "daily_limit": STAR_EXCHANGE_CONFIG["daily_limit"],
+        "remaining_daily_limit": max(0, remaining_daily_limit),
+        "can_exchange_more": remaining_daily_limit > 0
+    }
+
+
+
+
 
 # ==================== HEALTH CHECK ====================
 
