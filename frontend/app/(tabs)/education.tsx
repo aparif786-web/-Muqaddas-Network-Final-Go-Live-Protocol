@@ -273,7 +273,7 @@ export default function EducationScreen() {
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>{profile?.challenges_completed || 0}</Text>
-                  <Text style={styles.statLabel}>Games</Text>
+                  <Text style={styles.statLabel}>Challenges</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
