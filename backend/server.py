@@ -6629,6 +6629,8 @@ async def download_auth_qr_code():
 
 # ==================== DIGITAL SIGNATURE & LEGAL PDF SYSTEM ====================
 
+# ==================== MUQADDAS ROYAL DIGITAL SEAL ====================
+
 class DigitalSignatureRequest(BaseModel):
     user_id: str
     full_name: str
@@ -6643,9 +6645,129 @@ class VerifySignatureRequest(BaseModel):
 SULTAN_MASTER_SIGNATURE = {
     "name": "Sultan - Gyan Sultanat Founder",
     "signature_id": "SULTAN-MASTER-001",
+    "verification_key": "MQD-990-ZERO-ERROR-2026",
     "created_at": "2025-01-01T00:00:00Z",
     "valid_until": "2030-12-31T23:59:59Z"
 }
+
+def generate_royal_seal_image(size=400):
+    """
+    Generate the Royal Muqaddas Network Digital Seal
+    💚 Center: Green Emerald
+    🏛️ Border: Gold ring with authority text
+    """
+    # Create image with transparent background
+    img = Image.new('RGBA', (size, size), (255, 255, 255, 0))
+    draw = ImageDraw.Draw(img)
+    
+    center = size // 2
+    
+    # Outer gold ring
+    outer_radius = size // 2 - 10
+    draw.ellipse(
+        [center - outer_radius, center - outer_radius, 
+         center + outer_radius, center + outer_radius],
+        outline='#FFD700', width=8
+    )
+    
+    # Inner decorative ring
+    inner_radius = outer_radius - 30
+    draw.ellipse(
+        [center - inner_radius, center - inner_radius,
+         center + inner_radius, center + inner_radius],
+        outline='#DAA520', width=3
+    )
+    
+    # Center emerald green circle (💚)
+    emerald_radius = 60
+    draw.ellipse(
+        [center - emerald_radius, center - emerald_radius,
+         center + emerald_radius, center + emerald_radius],
+        fill='#50C878', outline='#228B22', width=4
+    )
+    
+    # Inner emerald shine
+    shine_radius = 40
+    draw.ellipse(
+        [center - shine_radius + 10, center - shine_radius - 10,
+         center + shine_radius - 20, center + shine_radius - 30],
+        fill='#90EE90'
+    )
+    
+    # Draw "M" in center for Muqaddas
+    try:
+        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 50)
+        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
+    except:
+        font_large = ImageFont.load_default()
+        font_small = ImageFont.load_default()
+    
+    draw.text((center - 18, center - 30), "M", fill='#FFFFFF', font=font_large)
+    
+    # Draw circular text - Sultan's Authority
+    text = "★ SULTAN'S AUTHORITY ★ MUQADDAS NETWORK ★ 2026 ★"
+    text_radius = outer_radius - 18
+    
+    for i, char in enumerate(text):
+        angle = (i / len(text)) * 2 * math.pi - math.pi / 2
+        x = center + text_radius * math.cos(angle)
+        y = center + text_radius * math.sin(angle)
+        draw.text((x - 4, y - 6), char, fill='#FFD700', font=font_small)
+    
+    return img
+
+@api_router.get("/seal/royal-seal")
+async def get_royal_seal():
+    """
+    Get the Muqaddas Network Royal Digital Seal
+    This seal represents Sultan's authority on all documents
+    """
+    seal_img = generate_royal_seal_image(400)
+    
+    buffer = io.BytesIO()
+    seal_img.save(buffer, format='PNG')
+    buffer.seek(0)
+    seal_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return {
+        "success": True,
+        "seal_base64": f"data:image/png;base64,{seal_base64}",
+        "seal_info": {
+            "name": "Muqaddas Network Royal Seal",
+            "owner": "Sultan (The Main Developer)",
+            "verification_key": SULTAN_MASTER_SIGNATURE["verification_key"],
+            "valid_until": SULTAN_MASTER_SIGNATURE["valid_until"]
+        },
+        "description": "এই সিলটি সুলতানের ক্ষমতার প্রতীক - শুধুমাত্র অফিসিয়াল ডকুমেন্টে ব্যবহৃত হয়"
+    }
+
+@api_router.get("/seal/download")
+async def download_royal_seal():
+    """Download the Royal Seal as PNG"""
+    seal_img = generate_royal_seal_image(600)  # Higher resolution for download
+    
+    buffer = io.BytesIO()
+    seal_img.save(buffer, format='PNG')
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="image/png",
+        headers={"Content-Disposition": "attachment; filename=muqaddas_royal_seal.png"}
+    )
+
+@api_router.get("/seal/verify/{verification_key}")
+async def verify_seal(verification_key: str):
+    """Verify if a seal/signature is authentic"""
+    is_valid = verification_key == SULTAN_MASTER_SIGNATURE["verification_key"]
+    
+    return {
+        "verification_key": verification_key,
+        "is_valid": is_valid,
+        "status": "✅ VERIFIED & SECURED" if is_valid else "❌ INVALID",
+        "authority": "Sultan - Muqaddas Network" if is_valid else None,
+        "message": "Verified by Muqaddas Technology" if is_valid else "This seal is not authentic"
+    }
 
 @api_router.post("/digital-signature/sign-document")
 async def sign_document(request: DigitalSignatureRequest):
