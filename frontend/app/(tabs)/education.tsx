@@ -305,12 +305,12 @@ export default function EducationScreen() {
                 onPress={() => setSelectedTab('games')}
               >
                 <Ionicons
-                  name="game-controller"
+                  name="flash"
                   size={20}
                   color={selectedTab === 'games' ? '#FFD700' : '#808080'}
                 />
                 <Text style={[styles.tabText, selectedTab === 'games' && styles.activeTabText]}>
-                  Mind Games
+                  Gyan Yuddh
                 </Text>
               </TouchableOpacity>
             </View>
