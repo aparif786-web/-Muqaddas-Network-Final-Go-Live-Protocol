@@ -90,18 +90,27 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
+  crown: {
+    fontSize: 60,
+    marginBottom: 10,
+  },
   logo: {
-    fontSize: 64,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFD700',
-    textShadowColor: '#FFD700',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+    letterSpacing: 2,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginTop: 8,
+    fontWeight: '600',
+  },
+  tagline: {
+    fontSize: 14,
     color: '#A0A0A0',
     marginTop: 8,
+    fontStyle: 'italic',
   },
   loader: {
     marginTop: 40,
