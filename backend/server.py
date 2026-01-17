@@ -6163,7 +6163,7 @@ async def ask_ai_teacher(
     }
 
 async def generate_ai_teacher_response_llm(subject: str, question: str, language: str) -> dict:
-    """Generate AI Teacher response using real LLM (Emergent API)"""
+    """Generate AI Teacher response using real LLM (Emergent API) - MULTILINGUAL SUPPORT"""
     
     # Subject-specific system prompts
     subject_prompts = {
@@ -6181,23 +6181,76 @@ async def generate_ai_teacher_response_llm(subject: str, question: str, language
     
     system_prompt = subject_prompts.get(subject, "You are a knowledgeable teacher helping students learn.")
     
-    # Language instruction
-    lang_instruction = ""
-    if language == "Hindi":
-        lang_instruction = "Respond in Hindi (Devanagari script) mixed with simple English terms where needed. Use conversational Hinglish style."
-    elif language == "Bengali":
-        lang_instruction = "Respond in Bengali."
-    else:
-        lang_instruction = "Respond in clear, simple English."
+    # MULTILINGUAL SUPPORT - 100+ Languages
+    language_instructions = {
+        # Indian Languages
+        "Hindi": "Respond in Hindi (Devanagari script) mixed with simple English terms. Use conversational Hinglish style.",
+        "Bengali": "Respond in Bengali (বাংলা) script. Be culturally appropriate for Bengali speakers.",
+        "Tamil": "Respond in Tamil (தமிழ்) script. Be culturally appropriate for Tamil speakers.",
+        "Telugu": "Respond in Telugu (తెలుగు) script. Be culturally appropriate for Telugu speakers.",
+        "Marathi": "Respond in Marathi (मराठी) script.",
+        "Gujarati": "Respond in Gujarati (ગુજરાતી) script.",
+        "Kannada": "Respond in Kannada (ಕನ್ನಡ) script.",
+        "Malayalam": "Respond in Malayalam (മലയാളം) script.",
+        "Punjabi": "Respond in Punjabi (ਪੰਜਾਬੀ) script.",
+        "Odia": "Respond in Odia (ଓଡ଼ିଆ) script.",
+        "Assamese": "Respond in Assamese (অসমীয়া) script.",
+        "Urdu": "Respond in Urdu (اردو) script.",
+        
+        # International Languages
+        "English": "Respond in clear, simple English.",
+        "Spanish": "Respond in Spanish (Español). Be culturally appropriate.",
+        "French": "Respond in French (Français). Be culturally appropriate.",
+        "German": "Respond in German (Deutsch). Be culturally appropriate.",
+        "Chinese": "Respond in Simplified Chinese (简体中文).",
+        "Japanese": "Respond in Japanese (日本語).",
+        "Korean": "Respond in Korean (한국어).",
+        "Arabic": "Respond in Arabic (العربية). Use Modern Standard Arabic.",
+        "Portuguese": "Respond in Portuguese (Português).",
+        "Russian": "Respond in Russian (Русский).",
+        "Italian": "Respond in Italian (Italiano).",
+        "Dutch": "Respond in Dutch (Nederlands).",
+        "Turkish": "Respond in Turkish (Türkçe).",
+        "Vietnamese": "Respond in Vietnamese (Tiếng Việt).",
+        "Thai": "Respond in Thai (ไทย).",
+        "Indonesian": "Respond in Indonesian (Bahasa Indonesia).",
+        "Malay": "Respond in Malay (Bahasa Melayu).",
+        "Persian": "Respond in Persian/Farsi (فارسی).",
+        "Hebrew": "Respond in Hebrew (עברית).",
+        "Polish": "Respond in Polish (Polski).",
+        "Swedish": "Respond in Swedish (Svenska).",
+        "Greek": "Respond in Greek (Ελληνικά).",
+        "Czech": "Respond in Czech (Čeština).",
+        "Romanian": "Respond in Romanian (Română).",
+        "Hungarian": "Respond in Hungarian (Magyar).",
+        "Ukrainian": "Respond in Ukrainian (Українська).",
+        "Swahili": "Respond in Swahili (Kiswahili).",
+        "Filipino": "Respond in Filipino/Tagalog.",
+        "Nepali": "Respond in Nepali (नेपाली).",
+        "Sinhala": "Respond in Sinhala (සිංහල).",
+        
+        # Auto-detect
+        "Auto": "Detect the language of the user's question and respond in the same language. If unclear, use English."
+    }
     
-    full_system = f"""You are the AI Teacher for Gyan Sultanat (ज्ञान सल्तनत) - India's premier education platform.
+    lang_instruction = language_instructions.get(language, 
+        f"Respond in {language}. If you cannot respond in this language, use English and mention that.")
+    
+    full_system = f"""You are the AI Teacher for Gyan Sultanat (ज्ञान सल्तनत) - The Global Knowledge Empire.
 
 {system_prompt}
 
-{lang_instruction}
+LANGUAGE INSTRUCTION: {lang_instruction}
 
 Guidelines:
 - Be helpful, accurate, and educational
+- Use simple language that students can understand
+- Provide examples where helpful
+- For health/legal topics, always recommend consulting professionals
+- Be encouraging and supportive
+- Keep responses concise but informative (2-3 paragraphs max)
+- Be culturally sensitive and appropriate
+- If user writes in a different language than specified, respond in THEIR language
 - Use simple language that students can understand
 - Provide examples where helpful
 - For health/legal topics, always recommend consulting professionals
