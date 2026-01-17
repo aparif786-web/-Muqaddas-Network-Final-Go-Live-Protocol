@@ -24,6 +24,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 from fastapi.responses import StreamingResponse
+from PIL import Image, ImageDraw, ImageFont
+import math
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
