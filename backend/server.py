@@ -4621,6 +4621,383 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+# ==================== CROWN SYSTEM APIs ====================
+
+@api_router.get("/crowns/types")
+async def get_crown_types():
+    """Get all available crown types and their requirements"""
+    crown_data = []
+    for crown_type, requirements in CROWN_REQUIREMENTS.items():
+        crown_data.append({
+            "type": crown_type.value,
+            "name": crown_type.value.replace("_", " ").title(),
+            "requirements": requirements,
+            "icon": get_crown_icon(crown_type),
+            "color": get_crown_color(crown_type)
+        })
+    return {"crowns": crown_data}
+
+def get_crown_icon(crown_type: CrownType) -> str:
+    icons = {
+        CrownType.BRONZE: "🥉",
+        CrownType.SILVER: "🥈",
+        CrownType.GOLD: "🥇",
+        CrownType.GIFTER: "🎁",
+        CrownType.QUEEN: "👑",
+        CrownType.VIDEO_CREATOR: "🎬"
+    }
+    return icons.get(crown_type, "⭐")
+
+def get_crown_color(crown_type: CrownType) -> str:
+    colors = {
+        CrownType.BRONZE: "#CD7F32",
+        CrownType.SILVER: "#C0C0C0",
+        CrownType.GOLD: "#FFD700",
+        CrownType.GIFTER: "#E91E63",
+        CrownType.QUEEN: "#9C27B0",
+        CrownType.VIDEO_CREATOR: "#2196F3"
+    }
+    return colors.get(crown_type, "#808080")
+
+@api_router.get("/crowns/my-crowns")
+async def get_my_crowns(user_id: str = Depends(get_current_user_id)):
+    """Get all crowns earned by the current user"""
+    crowns = await db.user_crowns.find({"user_id": user_id, "is_active": True}).to_list(100)
+    return {
+        "crowns": [{
+            "crown_id": c["crown_id"],
+            "crown_type": c["crown_type"],
+            "icon": get_crown_icon(CrownType(c["crown_type"])),
+            "color": get_crown_color(CrownType(c["crown_type"])),
+            "earned_at": c["earned_at"],
+            "expires_at": c.get("expires_at")
+        } for c in crowns],
+        "total_crowns": len(crowns)
+    }
+
+@api_router.post("/crowns/check-eligibility")
+async def check_crown_eligibility(user_id: str = Depends(get_current_user_id)):
+    """Check if user is eligible for any new crowns"""
+    # Get user stats
+    user_stats = await db.user_stats.find_one({"user_id": user_id}) or {}
+    total_likes = user_stats.get("total_likes_received", 0)
+    total_videos = user_stats.get("total_videos", 0)
+    total_views = user_stats.get("total_views", 0)
+    total_gifts_sent = user_stats.get("total_gifts_sent", 0)
+    
+    eligible_crowns = []
+    
+    # Check each crown type
+    if total_likes >= 100 and total_videos >= 5:
+        eligible_crowns.append(CrownType.BRONZE)
+    if total_likes >= 1000 and total_videos >= 20:
+        eligible_crowns.append(CrownType.SILVER)
+    if total_likes >= 10000 and total_videos >= 50:
+        eligible_crowns.append(CrownType.GOLD)
+    if total_gifts_sent >= 10000:
+        eligible_crowns.append(CrownType.GIFTER)
+    if total_videos >= 100 and total_views >= 100000:
+        eligible_crowns.append(CrownType.VIDEO_CREATOR)
+    
+    # Check which crowns user already has
+    existing_crowns = await db.user_crowns.find(
+        {"user_id": user_id, "is_active": True}
+    ).to_list(100)
+    existing_types = {c["crown_type"] for c in existing_crowns}
+    
+    # Filter out already earned crowns
+    new_eligible = [c for c in eligible_crowns if c.value not in existing_types]
+    
+    return {
+        "eligible_crowns": [c.value for c in new_eligible],
+        "user_stats": {
+            "total_likes": total_likes,
+            "total_videos": total_videos,
+            "total_views": total_views,
+            "total_gifts_sent": total_gifts_sent
+        }
+    }
+
+@api_router.post("/crowns/claim/{crown_type}")
+async def claim_crown(crown_type: str, user_id: str = Depends(get_current_user_id)):
+    """Claim an eligible crown"""
+    # Verify eligibility
+    eligibility = await check_crown_eligibility(user_id)
+    if crown_type not in eligibility["eligible_crowns"]:
+        raise HTTPException(status_code=400, detail="Not eligible for this crown")
+    
+    # Create crown
+    crown_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    await db.user_crowns.insert_one({
+        "crown_id": crown_id,
+        "user_id": user_id,
+        "crown_type": crown_type,
+        "earned_at": now,
+        "expires_at": None,  # Permanent
+        "is_active": True
+    })
+    
+    # Send notification
+    await create_notification(
+        user_id=user_id,
+        title=f"🎉 New Crown Earned!",
+        message=f"Congratulations! You've earned the {crown_type.replace('_', ' ').title()} Crown!",
+        notification_type="crown_earned"
+    )
+    
+    return {
+        "success": True,
+        "crown_id": crown_id,
+        "crown_type": crown_type,
+        "icon": get_crown_icon(CrownType(crown_type)),
+        "message": f"Successfully claimed {crown_type.replace('_', ' ').title()} Crown!"
+    }
+
+# ==================== VIDEO LEADERBOARD APIs ====================
+
+@api_router.get("/leaderboard/video/monthly")
+async def get_monthly_video_leaderboard(
+    month: Optional[str] = None  # Format: "2025-01"
+):
+    """Get monthly video leaderboard with prizes"""
+    if not month:
+        month = datetime.now(timezone.utc).strftime("%Y-%m")
+    
+    # Aggregate top videos for the month
+    pipeline = [
+        {"$match": {"month_year": month}},
+        {"$group": {
+            "_id": "$user_id",
+            "total_likes": {"$sum": "$likes_count"},
+            "total_views": {"$sum": "$views_count"},
+            "video_count": {"$sum": 1}
+        }},
+        {"$sort": {"total_likes": -1}},
+        {"$limit": 150}  # Top 150 models
+    ]
+    
+    results = await db.videos.aggregate(pipeline).to_list(150)
+    
+    leaderboard = []
+    for i, entry in enumerate(results, 1):
+        user = await db.users.find_one({"user_id": entry["_id"]})
+        user_crowns = await db.user_crowns.find(
+            {"user_id": entry["_id"], "is_active": True}
+        ).to_list(10)
+        
+        # Determine prize for top 10
+        prize_info = MONTHLY_PRIZES.get(i, {"prize": None, "coins": 0})
+        
+        # Determine crown based on rank
+        crown = None
+        if i == 1:
+            crown = CrownType.GOLD
+        elif i <= 10:
+            crown = CrownType.SILVER
+        elif i <= 50:
+            crown = CrownType.BRONZE
+        
+        leaderboard.append({
+            "rank": i,
+            "user_id": entry["_id"],
+            "user_name": user["name"] if user else "Unknown",
+            "user_picture": user.get("picture") if user else None,
+            "total_likes": entry["total_likes"],
+            "total_views": entry["total_views"],
+            "video_count": entry["video_count"],
+            "prize": prize_info["prize"],
+            "prize_coins": prize_info["coins"],
+            "crown": crown.value if crown else None,
+            "crown_icon": get_crown_icon(crown) if crown else None,
+            "existing_crowns": [c["crown_type"] for c in user_crowns]
+        })
+    
+    return {
+        "month": month,
+        "leaderboard": leaderboard,
+        "total_participants": len(leaderboard),
+        "prizes": MONTHLY_PRIZES,
+        "last_updated": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.get("/leaderboard/top-150")
+async def get_top_150_models():
+    """Get top 150 models across all categories"""
+    # Aggregate user scores
+    pipeline = [
+        {"$group": {
+            "_id": "$user_id",
+            "total_likes": {"$sum": "$likes_count"},
+            "total_views": {"$sum": "$views_count"},
+            "total_gifts": {"$sum": "$gifts_received"},
+            "video_count": {"$sum": 1}
+        }},
+        {"$addFields": {
+            "score": {
+                "$add": [
+                    {"$multiply": ["$total_likes", 1]},
+                    {"$multiply": ["$total_views", 0.1]},
+                    {"$multiply": ["$total_gifts", 10]}
+                ]
+            }
+        }},
+        {"$sort": {"score": -1}},
+        {"$limit": 150}
+    ]
+    
+    results = await db.videos.aggregate(pipeline).to_list(150)
+    
+    top_models = []
+    for i, entry in enumerate(results, 1):
+        user = await db.users.find_one({"user_id": entry["_id"]})
+        top_models.append({
+            "rank": i,
+            "user_id": entry["_id"],
+            "user_name": user["name"] if user else "Unknown",
+            "user_picture": user.get("picture") if user else None,
+            "score": int(entry["score"]),
+            "total_likes": entry["total_likes"],
+            "total_views": entry["total_views"],
+            "total_gifts": entry["total_gifts"],
+            "video_count": entry["video_count"],
+            "tier": "gold" if i <= 10 else "silver" if i <= 50 else "bronze"
+        })
+    
+    return {
+        "top_models": top_models,
+        "tiers": {
+            "gold": {"range": "1-10", "count": min(10, len(top_models))},
+            "silver": {"range": "11-50", "count": max(0, min(40, len(top_models) - 10))},
+            "bronze": {"range": "51-150", "count": max(0, len(top_models) - 50)}
+        }
+    }
+
+# ==================== MHA EVENT APIs ====================
+
+@api_router.get("/events/mha/active")
+async def get_active_mha_events():
+    """Get all active MHA events"""
+    now = datetime.now(timezone.utc)
+    events = await db.mha_events.find({
+        "is_active": True,
+        "start_date": {"$lte": now},
+        "end_date": {"$gte": now}
+    }).to_list(100)
+    
+    return {
+        "events": [{
+            "event_id": e["event_id"],
+            "event_name": e["event_name"],
+            "event_type": e["event_type"],
+            "start_date": e["start_date"],
+            "end_date": e["end_date"],
+            "prize_pool": e["prize_pool"],
+            "days_remaining": (e["end_date"] - now).days
+        } for e in events]
+    }
+
+@api_router.post("/events/mha/join/{event_id}")
+async def join_mha_event(event_id: str, user_id: str = Depends(get_current_user_id)):
+    """Join an MHA event"""
+    # Check event exists and is active
+    event = await db.mha_events.find_one({"event_id": event_id, "is_active": True})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found or not active")
+    
+    # Check if already joined
+    existing = await db.mha_participants.find_one({
+        "event_id": event_id,
+        "user_id": user_id
+    })
+    if existing:
+        return {"success": True, "message": "Already joined this event", "participant_id": existing["participant_id"]}
+    
+    # Join event
+    participant_id = str(uuid.uuid4())
+    await db.mha_participants.insert_one({
+        "participant_id": participant_id,
+        "event_id": event_id,
+        "user_id": user_id,
+        "total_score": 0,
+        "rank": None,
+        "crown_earned": None,
+        "prize_won": None,
+        "joined_at": datetime.now(timezone.utc)
+    })
+    
+    return {
+        "success": True,
+        "message": f"Successfully joined {event['event_name']}!",
+        "participant_id": participant_id
+    }
+
+@api_router.get("/events/mha/{event_id}/leaderboard")
+async def get_mha_event_leaderboard(event_id: str):
+    """Get leaderboard for specific MHA event"""
+    event = await db.mha_events.find_one({"event_id": event_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    participants = await db.mha_participants.find(
+        {"event_id": event_id}
+    ).sort("total_score", -1).to_list(150)
+    
+    leaderboard = []
+    for i, p in enumerate(participants, 1):
+        user = await db.users.find_one({"user_id": p["user_id"]})
+        leaderboard.append({
+            "rank": i,
+            "user_id": p["user_id"],
+            "user_name": user["name"] if user else "Unknown",
+            "user_picture": user.get("picture") if user else None,
+            "total_score": p["total_score"],
+            "crown_earned": p.get("crown_earned"),
+            "prize_won": p.get("prize_won")
+        })
+    
+    return {
+        "event": {
+            "event_id": event["event_id"],
+            "event_name": event["event_name"],
+            "prize_pool": event["prize_pool"]
+        },
+        "leaderboard": leaderboard,
+        "total_participants": len(leaderboard)
+    }
+
+# ==================== CHARITY STATUS API ====================
+
+@api_router.get("/charity/status")
+async def get_charity_status():
+    """Get current charity contribution status and rates"""
+    # Get company revenue (mock for now)
+    company_stats = await db.company_stats.find_one({"type": "revenue"}) or {
+        "total_revenue": 0,
+        "total_charity_contributed": 0
+    }
+    
+    total_revenue = company_stats.get("total_revenue", 0)
+    
+    # Determine current phase
+    if total_revenue >= CHARITY_PHASE_1_THRESHOLD:
+        current_charity_rate = CHARITY_PHASE_2_RATE
+        phase = "Phase 2 (45% Charity)"
+    else:
+        current_charity_rate = CHARITY_PHASE_1_RATE
+        phase = "Phase 1 (2% Charity)"
+    
+    return {
+        "current_phase": phase,
+        "charity_rate": current_charity_rate * 100,
+        "security_fund_rate": SECURITY_FUND_RATE * 100,
+        "total_charity_contributed": company_stats.get("total_charity_contributed", 0),
+        "revenue_to_next_phase": max(0, CHARITY_PHASE_1_THRESHOLD - total_revenue),
+        "phase_threshold": CHARITY_PHASE_1_THRESHOLD,
+        "message": "45% of company income goes to charity after ₹10 Billion revenue milestone"
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
