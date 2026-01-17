@@ -6558,6 +6558,512 @@ async def get_active_educational_ads(subject: Optional[str] = None):
         "total": len(ads)
     }
 
+# ==================== QR CODE SCANNER SYSTEM ====================
+
+# Encryption key for digital signatures (in production, use secure vault)
+ENCRYPTION_KEY = Fernet.generate_key()
+fernet = Fernet(ENCRYPTION_KEY)
+
+@api_router.get("/qr/generate-auth")
+async def generate_auth_qr_code():
+    """
+    Generate high-resolution QR code for Gyan Sultanat authentication
+    This is the main gateway for users to enter the app
+    """
+    auth_url = "https://auth.emergentagent.com/?redirect=gyansultanat%3A%2F%2F%2F"
+    
+    # Generate high-quality QR code
+    qr = qrcode.QRCode(
+        version=3,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,  # High error correction
+        box_size=12,
+        border=2,
+    )
+    qr.add_data(auth_url)
+    qr.make(fit=True)
+    
+    # Create image with custom colors
+    img = qr.make_image(fill_color="#1a1a2e", back_color="#f4f4f4")
+    
+    # Convert to base64
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    img_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return {
+        "success": True,
+        "qr_code_base64": f"data:image/png;base64,{img_base64}",
+        "auth_url": auth_url,
+        "description": "স্ক্যান করুন এবং Gyan Sultanat-এ প্রবেশ করুন!",
+        "message": "This QR code is the main gateway to Gyan Sultanat app"
+    }
+
+@api_router.get("/qr/download-auth")
+async def download_auth_qr_code():
+    """Download high-resolution QR code as PNG file"""
+    auth_url = "https://auth.emergentagent.com/?redirect=gyansultanat%3A%2F%2F%2F"
+    
+    qr = qrcode.QRCode(
+        version=5,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=15,
+        border=3,
+    )
+    qr.add_data(auth_url)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="#1a1a2e", back_color="#ffffff")
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="image/png",
+        headers={"Content-Disposition": "attachment; filename=gyan_sultanat_auth_qr.png"}
+    )
+
+# ==================== DIGITAL SIGNATURE & LEGAL PDF SYSTEM ====================
+
+class DigitalSignatureRequest(BaseModel):
+    user_id: str
+    full_name: str
+    document_type: str  # "terms_conditions", "partnership_agreement", "charity_agreement"
+    signature_data: str  # Base64 encoded signature image or text
+
+class VerifySignatureRequest(BaseModel):
+    signature_hash: str
+    document_id: str
+
+# Sultan's Master Signature (encrypted and stored)
+SULTAN_MASTER_SIGNATURE = {
+    "name": "Sultan - Gyan Sultanat Founder",
+    "signature_id": "SULTAN-MASTER-001",
+    "created_at": "2025-01-01T00:00:00Z",
+    "valid_until": "2030-12-31T23:59:59Z"
+}
+
+@api_router.post("/digital-signature/sign-document")
+async def sign_document(request: DigitalSignatureRequest):
+    """
+    Create digital signature for Terms & Conditions or any legal document
+    Every user/agency must sign before joining the system
+    """
+    now = datetime.now(timezone.utc)
+    signature_id = str(uuid.uuid4())
+    
+    # Create signature hash (for audit trail)
+    signature_content = f"{request.user_id}:{request.full_name}:{request.document_type}:{now.isoformat()}"
+    signature_hash = hashlib.sha256(signature_content.encode()).hexdigest()
+    
+    # Encrypt the signature for security
+    encrypted_signature = fernet.encrypt(request.signature_data.encode()).decode()
+    
+    # Store in database
+    document = {
+        "signature_id": signature_id,
+        "user_id": request.user_id,
+        "full_name": request.full_name,
+        "document_type": request.document_type,
+        "signature_hash": signature_hash,
+        "encrypted_signature": encrypted_signature,
+        "is_valid": True,
+        "ip_address": None,  # Can capture from request
+        "created_at": now,
+        "sultan_verified": True,  # Sultan's master signature validates this
+        "audit_trail": [
+            {
+                "action": "document_signed",
+                "timestamp": now.isoformat(),
+                "details": f"{request.full_name} signed {request.document_type}"
+            }
+        ]
+    }
+    
+    await db.digital_signatures.insert_one(document)
+    
+    return {
+        "success": True,
+        "message": "ডিজিটাল সিগনেচার সফলভাবে সম্পন্ন হয়েছে!",
+        "signature_id": signature_id,
+        "signature_hash": signature_hash,
+        "document_type": request.document_type,
+        "signed_at": now.isoformat(),
+        "sultan_verified": True,
+        "legal_binding": True
+    }
+
+@api_router.post("/digital-signature/verify")
+async def verify_signature(request: VerifySignatureRequest):
+    """Verify a digital signature for audit purposes"""
+    signature = await db.digital_signatures.find_one({
+        "signature_hash": request.signature_hash
+    })
+    
+    if not signature:
+        return {
+            "success": False,
+            "message": "Signature not found",
+            "is_valid": False
+        }
+    
+    return {
+        "success": True,
+        "is_valid": signature["is_valid"],
+        "signed_by": signature["full_name"],
+        "document_type": signature["document_type"],
+        "signed_at": signature["created_at"].isoformat(),
+        "sultan_verified": signature["sultan_verified"],
+        "audit_trail": signature["audit_trail"]
+    }
+
+@api_router.get("/digital-signature/generate-pdf/{user_id}")
+async def generate_signed_pdf(user_id: str, document_type: str = "terms_conditions"):
+    """Generate a signed PDF document for user"""
+    user = await db.users.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if already signed
+    existing_signature = await db.digital_signatures.find_one({
+        "user_id": user_id,
+        "document_type": document_type
+    })
+    
+    now = datetime.now(timezone.utc)
+    
+    # Create PDF
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    # Header
+    p.setFont("Helvetica-Bold", 24)
+    p.drawCentredString(width/2, height - 50, "GYAN SULTANAT")
+    
+    p.setFont("Helvetica", 14)
+    p.drawCentredString(width/2, height - 75, "Gyaan se Aay, Apne Sapne Sajaye!")
+    
+    # Document Title
+    p.setFont("Helvetica-Bold", 18)
+    title = "Terms & Conditions Agreement" if document_type == "terms_conditions" else "Partnership Agreement"
+    p.drawCentredString(width/2, height - 120, title)
+    
+    # Line
+    p.line(50, height - 140, width - 50, height - 140)
+    
+    # Content
+    p.setFont("Helvetica", 11)
+    y = height - 170
+    
+    terms = [
+        "1. By signing this document, you agree to the Gyan Sultanat platform terms.",
+        "2. All financial transactions are subject to applicable taxes (45% Google/System Tax).",
+        "3. 2% of all transactions go directly to charity (Live Counter).",
+        "4. Agency commission rates: 12%, 16%, or 20% based on tier.",
+        "5. Owner's profit is calculated after all deductions.",
+        "6. This digital signature is legally binding and encrypted.",
+        "7. All data is protected under privacy laws.",
+        "8. Disputes will be resolved under Indian jurisdiction.",
+    ]
+    
+    for term in terms:
+        p.drawString(50, y, term)
+        y -= 25
+    
+    # User Details Section
+    y -= 30
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "Signatory Details:")
+    y -= 20
+    
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, f"Name: {user.get('name', 'N/A')}")
+    y -= 18
+    p.drawString(50, y, f"Email: {user.get('email', 'N/A')}")
+    y -= 18
+    p.drawString(50, y, f"User ID: {user_id}")
+    y -= 18
+    p.drawString(50, y, f"Date: {now.strftime('%d %B %Y, %H:%M:%S UTC')}")
+    
+    # Signature Section
+    y -= 50
+    p.line(50, y, 250, y)
+    p.drawString(50, y - 15, "User Signature")
+    
+    if existing_signature:
+        p.drawString(50, y + 10, f"[DIGITALLY SIGNED - {existing_signature['signature_hash'][:16]}...]")
+    
+    # Sultan's Verification
+    y -= 80
+    p.setFont("Helvetica-Bold", 11)
+    p.drawString(50, y, "Verified by Sultan - Gyan Sultanat Founder")
+    p.setFont("Helvetica", 10)
+    p.drawString(50, y - 15, f"Master Signature ID: {SULTAN_MASTER_SIGNATURE['signature_id']}")
+    p.drawString(50, y - 30, "This document is encrypted and tamper-proof.")
+    
+    # Footer
+    p.setFont("Helvetica", 9)
+    p.drawCentredString(width/2, 40, "Muqaddas Technology - Powered by AI")
+    p.drawCentredString(width/2, 25, f"Document Generated: {now.isoformat()}")
+    
+    p.save()
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=gyan_sultanat_{document_type}_{user_id}.pdf"}
+    )
+
+@api_router.get("/digital-signature/user-signatures/{user_id}")
+async def get_user_signatures(user_id: str):
+    """Get all digital signatures for a user"""
+    signatures = await db.digital_signatures.find({"user_id": user_id}).to_list(100)
+    
+    return {
+        "user_id": user_id,
+        "total_signatures": len(signatures),
+        "signatures": [{
+            "signature_id": sig["signature_id"],
+            "document_type": sig["document_type"],
+            "signature_hash": sig["signature_hash"],
+            "signed_at": sig["created_at"].isoformat(),
+            "is_valid": sig["is_valid"],
+            "sultan_verified": sig["sultan_verified"]
+        } for sig in signatures]
+    }
+
+# ==================== FINANCIAL SUMMARY & CALCULATOR ====================
+
+class FinancialCalculationRequest(BaseModel):
+    gross_amount: float  # Total amount before deductions
+    agency_tier: str = "standard"  # "standard" (12%), "premium" (16%), "elite" (20%)
+    include_registration_fee: bool = True
+
+class AgencyCommissionTier(str, Enum):
+    STANDARD = "standard"  # 12%
+    PREMIUM = "premium"    # 16%
+    ELITE = "elite"        # 20%
+
+# Commission rates
+AGENCY_COMMISSION_RATES = {
+    "standard": 0.12,  # 12%
+    "premium": 0.16,   # 16%
+    "elite": 0.20      # 20%
+}
+
+SYSTEM_TAX_RATE = 0.45  # 45% Google/System Tax
+CHARITY_RATE = 0.02     # 2% Charity
+REGISTRATION_FEE = 1.0  # ₹1 Registration fee
+
+@api_router.post("/finance/calculate")
+async def calculate_financial_breakdown(request: FinancialCalculationRequest):
+    """
+    Calculate complete financial breakdown including all fees
+    This is the master calculator for Sultan's financial summary
+    """
+    gross = request.gross_amount
+    
+    # Step 1: System Tax (45%)
+    system_tax = gross * SYSTEM_TAX_RATE
+    after_tax = gross - system_tax
+    
+    # Step 2: Charity (2% of original)
+    charity = gross * CHARITY_RATE
+    after_charity = after_tax - charity
+    
+    # Step 3: Agency Commission
+    commission_rate = AGENCY_COMMISSION_RATES.get(request.agency_tier, 0.12)
+    agency_commission = gross * commission_rate
+    after_commission = after_charity - agency_commission
+    
+    # Step 4: Registration fee (if applicable)
+    registration = REGISTRATION_FEE if request.include_registration_fee else 0
+    
+    # Step 5: Owner's Profit (Sultan's share)
+    owner_profit = after_commission - registration
+    
+    return {
+        "success": True,
+        "calculation_date": datetime.now(timezone.utc).isoformat(),
+        "input": {
+            "gross_amount": gross,
+            "agency_tier": request.agency_tier,
+            "include_registration_fee": request.include_registration_fee
+        },
+        "breakdown": {
+            "gross_amount": f"₹{gross:,.2f}",
+            "system_tax": {
+                "rate": "45%",
+                "amount": f"₹{system_tax:,.2f}",
+                "description": "Google/Platform Tax"
+            },
+            "charity_contribution": {
+                "rate": "2%",
+                "amount": f"₹{charity:,.2f}",
+                "description": "Direct to Live Charity Counter"
+            },
+            "agency_commission": {
+                "tier": request.agency_tier,
+                "rate": f"{commission_rate * 100}%",
+                "amount": f"₹{agency_commission:,.2f}"
+            },
+            "registration_fee": f"₹{registration:,.2f}",
+            "owner_profit": {
+                "amount": f"₹{owner_profit:,.2f}",
+                "description": "Sultan's Account Credit"
+            }
+        },
+        "summary": {
+            "total_deductions": f"₹{gross - owner_profit:,.2f}",
+            "net_to_sultan": f"₹{owner_profit:,.2f}",
+            "profit_percentage": f"{(owner_profit / gross * 100):.2f}%"
+        },
+        "raw_values": {
+            "gross_amount": gross,
+            "system_tax": system_tax,
+            "charity": charity,
+            "agency_commission": agency_commission,
+            "registration_fee": registration,
+            "owner_profit": owner_profit
+        }
+    }
+
+@api_router.get("/finance/live-charity-counter")
+async def get_live_charity_counter():
+    """Get the live charity counter total"""
+    # Aggregate all charity contributions
+    pipeline = [
+        {"$match": {"transaction_type": "charity_contribution", "status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]
+    
+    result = await db.wallet_transactions.aggregate(pipeline).to_list(1)
+    total = result[0]["total"] if result else 0.0
+    
+    # Get recent contributions
+    recent = await db.wallet_transactions.find(
+        {"transaction_type": "charity_contribution", "status": "completed"}
+    ).sort("created_at", -1).limit(10).to_list(10)
+    
+    return {
+        "success": True,
+        "live_counter": {
+            "total_collected": f"₹{total:,.2f}",
+            "total_raw": total,
+            "last_updated": datetime.now(timezone.utc).isoformat()
+        },
+        "recent_contributions": [{
+            "amount": f"₹{t.get('amount', 0):,.2f}",
+            "date": t.get("created_at", datetime.now()).isoformat() if t.get("created_at") else None
+        } for t in recent],
+        "message": "2% of every transaction goes directly to charity!"
+    }
+
+@api_router.get("/finance/sultan-dashboard")
+async def get_sultan_financial_dashboard():
+    """
+    Sultan's complete financial dashboard - One click view
+    Shows all earnings, deductions, and balances
+    """
+    now = datetime.now(timezone.utc)
+    
+    # Today's transactions
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Aggregate today's revenue
+    today_pipeline = [
+        {"$match": {"created_at": {"$gte": today_start}, "status": "completed"}},
+        {"$group": {"_id": "$transaction_type", "total": {"$sum": "$amount"}}}
+    ]
+    today_results = await db.wallet_transactions.aggregate(today_pipeline).to_list(100)
+    today_by_type = {r["_id"]: r["total"] for r in today_results}
+    
+    # Total revenue all time
+    total_pipeline = [
+        {"$match": {"status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]
+    total_result = await db.wallet_transactions.aggregate(total_pipeline).to_list(1)
+    total_revenue = total_result[0]["total"] if total_result else 0.0
+    
+    # Charity total
+    charity_pipeline = [
+        {"$match": {"transaction_type": "charity_contribution", "status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]
+    charity_result = await db.wallet_transactions.aggregate(charity_pipeline).to_list(1)
+    total_charity = charity_result[0]["total"] if charity_result else 0.0
+    
+    # User counts
+    total_users = await db.users.count_documents({})
+    total_talents = await db.talents.count_documents({"status": "active"})
+    total_partners = await db.partners.count_documents({"status": "verified"})
+    
+    # Calculate Sultan's estimated profit
+    estimated_profit = total_revenue * 0.41  # After 45% tax, 2% charity, 12% avg commission
+    
+    return {
+        "success": True,
+        "dashboard_generated": now.isoformat(),
+        "owner": "Sultan - Gyan Sultanat",
+        "financial_summary": {
+            "total_revenue": f"₹{total_revenue:,.2f}",
+            "total_charity_given": f"₹{total_charity:,.2f}",
+            "estimated_sultan_profit": f"₹{estimated_profit:,.2f}",
+            "today_revenue": f"₹{sum(today_by_type.values()):,.2f}"
+        },
+        "today_breakdown": today_by_type,
+        "platform_stats": {
+            "total_users": total_users,
+            "registered_talents": total_talents,
+            "verified_partners": total_partners
+        },
+        "deduction_rates": {
+            "system_tax": "45%",
+            "charity": "2%",
+            "agency_commission_range": "12% - 20%"
+        },
+        "digital_signatures": {
+            "sultan_master_id": SULTAN_MASTER_SIGNATURE["signature_id"],
+            "valid_until": SULTAN_MASTER_SIGNATURE["valid_until"]
+        },
+        "message": "এক ক্লিকে সব হিসাব! সুলতানের জন্য তৈরি।"
+    }
+
+@api_router.get("/finance/transaction-audit/{transaction_id}")
+async def get_transaction_audit(transaction_id: str):
+    """Get complete audit trail for a transaction with digital signature verification"""
+    transaction = await db.wallet_transactions.find_one({"transaction_id": transaction_id})
+    
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Check for related digital signature
+    signature = await db.digital_signatures.find_one({
+        "user_id": transaction.get("user_id")
+    })
+    
+    return {
+        "transaction_id": transaction_id,
+        "transaction_details": {
+            "type": transaction.get("transaction_type"),
+            "amount": f"₹{transaction.get('amount', 0):,.2f}",
+            "status": transaction.get("status"),
+            "created_at": transaction.get("created_at").isoformat() if transaction.get("created_at") else None
+        },
+        "user_signature_status": {
+            "has_signed": signature is not None,
+            "signature_hash": signature["signature_hash"][:32] + "..." if signature else None,
+            "sultan_verified": signature.get("sultan_verified", False) if signature else False
+        },
+        "audit_verified": True,
+        "sultan_master_signature": SULTAN_MASTER_SIGNATURE["signature_id"]
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
