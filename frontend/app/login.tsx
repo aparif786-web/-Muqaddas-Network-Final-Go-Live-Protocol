@@ -151,13 +151,31 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
+  crownEmoji: {
+    fontSize: 50,
+  },
   title: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: 'bold',
+    color: '#FFD700',
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  hindiTitle: {
+    fontSize: 22,
     color: '#FFFFFF',
     marginBottom: 8,
   },
   subtitle: {
+    fontSize: 16,
+    color: '#A0A0A0',
+    marginBottom: 4,
+  },
+  tagline: {
+    fontSize: 14,
+    color: '#808080',
+    fontStyle: 'italic',
+  },
     fontSize: 16,
     color: '#A0A0A0',
   },
