@@ -128,6 +128,7 @@ export default function EducationScreen() {
 
   const handlePlayGame = async (game: MindGame) => {
     setPlaying(true);
+    await sultanFeedback.buttonPress(); // Click feedback
     try {
       // Simulate game play with random score
       const score = Math.floor(Math.random() * 100);
@@ -137,11 +138,18 @@ export default function EducationScreen() {
         time_taken: Math.floor(Math.random() * game.time_limit_seconds),
       });
       
+      if (response.data.won) {
+        await sultanFeedback.gameWon(); // Victory sound + vibration
+      } else {
+        await sultanFeedback.gameLost(); // Lose feedback
+      }
+      
       setGameResult({
         won: response.data.won,
         coins: response.data.coins_earned,
       });
     } catch (error: any) {
+      await sultanFeedback.error();
       alert(error.response?.data?.detail || 'Failed to play game');
     } finally {
       setPlaying(false);
