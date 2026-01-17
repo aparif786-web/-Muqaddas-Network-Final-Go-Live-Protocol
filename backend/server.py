@@ -4721,11 +4721,12 @@ async def check_crown_eligibility(user: User = Depends(get_current_user)):
     }
 
 @api_router.post("/crowns/claim/{crown_type}")
-async def claim_crown(crown_type: str, user_id: str = Depends(get_current_user)):
+async def claim_crown(crown_type: str, user: User = Depends(get_current_user)):
     """Claim an eligible crown"""
+    user_id = user.user_id
     # Verify eligibility
-    eligibility = await check_crown_eligibility(user_id)
-    if crown_type not in eligibility["eligible_crowns"]:
+    eligibility_result = await check_crown_eligibility(user)
+    if crown_type not in eligibility_result["eligible_crowns"]:
         raise HTTPException(status_code=400, detail="Not eligible for this crown")
     
     # Create crown
