@@ -69,8 +69,8 @@ export default function LoginScreen() {
               </View>
               <Text style={styles.title}>GYAN SULTANAT</Text>
               <Text style={styles.hindiTitle}>ज्ञान सल्तनत</Text>
-              <Text style={styles.subtitle}>The Knowledge Empire</Text>
-              <Text style={styles.tagline}>Jahan Gyan Raja Hai</Text>
+              <Text style={styles.subtitle}>Gyaan se Aay, Apne Sapne Sajaye!</Text>
+              <Text style={styles.tagline}>ज्ञान से आय, अपने सपने सजाये!</Text>
             </View>
 
             {/* Features Section */}
