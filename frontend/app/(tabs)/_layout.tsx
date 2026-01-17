@@ -37,47 +37,29 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="wallet"
+        name="leaderboard"
         options={{
-          title: 'Wallet',
+          title: 'Rank',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet" size={22} color={color} />
+            <Ionicons name="trophy" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="rewards"
+        name="ai-teacher"
         options={{
-          title: 'Rewards',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="gift" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="agency"
-        options={{
-          title: 'Agency',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="briefcase" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="education"
-        options={{
-          title: 'Learn',
+          title: 'AI Guru',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="school" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="vip"
+        name="wallet"
         options={{
-          title: 'VIP',
+          title: 'Wallet',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="diamond" size={22} color={color} />
+            <Ionicons name="wallet" size={22} color={color} />
           ),
         }}
       />
@@ -92,9 +74,33 @@ export default function TabLayout() {
       />
       {/* Hidden tabs - not shown in tab bar */}
       <Tabs.Screen
+        name="rewards"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="agency"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="education"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="vip"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="withdrawal"
         options={{
-          href: null, // Hide from tab bar
+          href: null,
         }}
       />
     </Tabs>
