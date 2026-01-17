@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../src/contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function Index() {
   const { user, isLoading, processSessionId } = useAuth();
   const router = useRouter();
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   useEffect(() => {
     const handleDeepLink = async () => {
@@ -49,13 +51,30 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (user) {
-        router.replace('/(tabs)/home');
-      } else {
-        router.replace('/login');
+    const checkAndNavigate = async () => {
+      if (!isLoading) {
+        if (user) {
+          // Check if onboarding is complete
+          try {
+            const onboardingComplete = await AsyncStorage.getItem('onboarding_complete');
+            if (onboardingComplete === 'true') {
+              router.replace('/(tabs)/home');
+            } else {
+              // First time user - show onboarding
+              router.replace('/onboarding');
+            }
+          } catch (error) {
+            // If error, go to home
+            router.replace('/(tabs)/home');
+          }
+        } else {
+          router.replace('/login');
+        }
+        setCheckingOnboarding(false);
       }
-    }
+    };
+    
+    checkAndNavigate();
   }, [user, isLoading]);
 
   return (
@@ -68,7 +87,7 @@ export default function Index() {
           <Text style={styles.crown}>👑</Text>
           <Text style={styles.logo}>GYAN SULTANAT</Text>
           <Text style={styles.subtitle}>ज्ञान सल्तनत</Text>
-          <Text style={styles.tagline}>Jahan Gyan Raja Hai</Text>
+          <Text style={styles.tagline}>Gyaan se Aay, Apne Sapne Sajaye!</Text>
           <ActivityIndicator size="large" color="#FFD700" style={styles.loader} />
           <Text style={styles.loadingText}>Loading The Knowledge Empire...</Text>
         </View>
