@@ -7461,6 +7461,400 @@ async def get_transaction_audit(transaction_id: str):
         "sultan_master_signature": SULTAN_MASTER_SIGNATURE["signature_id"]
     }
 
+# ==================== PAYMENT GATEWAY SYSTEM ====================
+# UPI, Card, Net Banking - Indian Payment Methods
+# Payoneer Customer ID: 35953271
+
+class PaymentMethod(str, Enum):
+    UPI = "upi"
+    CARD = "card"
+    NET_BANKING = "net_banking"
+    WALLET = "wallet"
+
+class PaymentStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SUCCESS = "success"
+    FAILED = "failed"
+    REFUNDED = "refunded"
+
+class CreatePaymentRequest(BaseModel):
+    user_id: str
+    amount: float
+    currency: str = "INR"
+    payment_method: PaymentMethod = PaymentMethod.UPI
+    description: str = "Gyan Sultanat Payment"
+    upi_id: Optional[str] = None  # For UPI payments
+
+class PaymentVerifyRequest(BaseModel):
+    payment_id: str
+    transaction_id: str
+
+# Sultan's UPI ID for receiving payments
+SULTAN_UPI_ID = "gyansultanat@upi"
+PAYONEER_CUSTOMER_ID = "35953271"
+
+# Payment configuration
+PAYMENT_CONFIG = {
+    "test_mode": True,  # Set to False for production
+    "currency": "INR",
+    "min_amount": 1,
+    "max_amount": 100000,
+    "supported_methods": ["upi", "card", "net_banking", "wallet"],
+    "upi_apps": ["gpay", "phonepe", "paytm", "bhim"],
+    "payoneer_id": PAYONEER_CUSTOMER_ID
+}
+
+@api_router.get("/payment/config")
+async def get_payment_config():
+    """Get payment gateway configuration"""
+    return {
+        "success": True,
+        "config": PAYMENT_CONFIG,
+        "supported_methods": [
+            {"id": "upi", "name": "UPI", "icon": "💳", "description": "Pay using any UPI app"},
+            {"id": "card", "name": "Credit/Debit Card", "icon": "💳", "description": "Visa, Mastercard, RuPay"},
+            {"id": "net_banking", "name": "Net Banking", "icon": "🏦", "description": "All major banks"},
+            {"id": "wallet", "name": "Wallet", "icon": "👛", "description": "Paytm, PhonePe, etc."}
+        ],
+        "upi_apps": [
+            {"id": "gpay", "name": "Google Pay", "package": "com.google.android.apps.nbu.paisa.user"},
+            {"id": "phonepe", "name": "PhonePe", "package": "com.phonepe.app"},
+            {"id": "paytm", "name": "Paytm", "package": "net.one97.paytm"},
+            {"id": "bhim", "name": "BHIM", "package": "in.org.npci.upiapp"}
+        ]
+    }
+
+@api_router.post("/payment/create")
+async def create_payment(request: CreatePaymentRequest):
+    """
+    Create a new payment order
+    Supports UPI, Card, Net Banking, Wallet
+    """
+    now = datetime.now(timezone.utc)
+    payment_id = f"PAY-{uuid.uuid4().hex[:12].upper()}"
+    order_id = f"ORD-{uuid.uuid4().hex[:8].upper()}"
+    
+    # Validate amount
+    if request.amount < PAYMENT_CONFIG["min_amount"]:
+        raise HTTPException(status_code=400, detail=f"Minimum amount is ₹{PAYMENT_CONFIG['min_amount']}")
+    if request.amount > PAYMENT_CONFIG["max_amount"]:
+        raise HTTPException(status_code=400, detail=f"Maximum amount is ₹{PAYMENT_CONFIG['max_amount']}")
+    
+    # Generate UPI payment link
+    upi_link = None
+    upi_qr_base64 = None
+    
+    if request.payment_method == PaymentMethod.UPI:
+        # Create UPI deep link
+        upi_link = f"upi://pay?pa={SULTAN_UPI_ID}&pn=Gyan%20Sultanat&am={request.amount}&cu=INR&tn={request.description.replace(' ', '%20')}&tr={order_id}"
+        
+        # Generate QR code for UPI
+        qr = qrcode.QRCode(version=3, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=10, border=2)
+        qr.add_data(upi_link)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#1a1a2e", back_color="#ffffff")
+        
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        upi_qr_base64 = f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+    
+    # Store payment in database
+    payment_doc = {
+        "payment_id": payment_id,
+        "order_id": order_id,
+        "user_id": request.user_id,
+        "amount": request.amount,
+        "currency": request.currency,
+        "payment_method": request.payment_method.value,
+        "description": request.description,
+        "status": PaymentStatus.PENDING.value,
+        "upi_link": upi_link,
+        "created_at": now,
+        "updated_at": now,
+        "test_mode": PAYMENT_CONFIG["test_mode"],
+        "metadata": {
+            "payoneer_id": PAYONEER_CUSTOMER_ID,
+            "sultan_upi": SULTAN_UPI_ID
+        }
+    }
+    
+    await db.payments.insert_one(payment_doc)
+    
+    return {
+        "success": True,
+        "payment_id": payment_id,
+        "order_id": order_id,
+        "amount": request.amount,
+        "currency": request.currency,
+        "payment_method": request.payment_method.value,
+        "status": "pending",
+        "upi_data": {
+            "upi_link": upi_link,
+            "upi_qr_code": upi_qr_base64,
+            "upi_id": SULTAN_UPI_ID,
+            "apps": ["gpay", "phonepe", "paytm", "bhim"]
+        } if request.payment_method == PaymentMethod.UPI else None,
+        "expires_at": (now + timedelta(minutes=15)).isoformat(),
+        "message": "পেমেন্ট লিংক তৈরি হয়েছে! ১৫ মিনিটের মধ্যে পেমেন্ট করুন।",
+        "test_mode": PAYMENT_CONFIG["test_mode"]
+    }
+
+@api_router.post("/payment/verify")
+async def verify_payment(request: PaymentVerifyRequest):
+    """Verify payment status"""
+    payment = await db.payments.find_one({"payment_id": request.payment_id})
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    # In test mode, auto-verify the payment
+    if PAYMENT_CONFIG["test_mode"]:
+        await db.payments.update_one(
+            {"payment_id": request.payment_id},
+            {"$set": {
+                "status": PaymentStatus.SUCCESS.value,
+                "transaction_id": request.transaction_id,
+                "verified_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        # Add to user's wallet
+        user = await db.users.find_one({"user_id": payment["user_id"]})
+        if user:
+            new_balance = user.get("coin_balance", 0) + payment["amount"]
+            await db.users.update_one(
+                {"user_id": payment["user_id"]},
+                {"$set": {"coin_balance": new_balance}}
+            )
+        
+        return {
+            "success": True,
+            "status": "success",
+            "payment_id": request.payment_id,
+            "transaction_id": request.transaction_id,
+            "amount": payment["amount"],
+            "message": "✅ পেমেন্ট সফল হয়েছে! আপনার অ্যাকাউন্টে টাকা যোগ হয়েছে।",
+            "test_mode": True
+        }
+    
+    return {
+        "success": True,
+        "status": payment["status"],
+        "payment_id": request.payment_id,
+        "amount": payment["amount"]
+    }
+
+@api_router.get("/payment/status/{payment_id}")
+async def get_payment_status(payment_id: str):
+    """Get payment status by payment ID"""
+    payment = await db.payments.find_one({"payment_id": payment_id})
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    return {
+        "success": True,
+        "payment_id": payment_id,
+        "order_id": payment.get("order_id"),
+        "amount": payment.get("amount"),
+        "currency": payment.get("currency"),
+        "status": payment.get("status"),
+        "payment_method": payment.get("payment_method"),
+        "created_at": payment.get("created_at").isoformat() if payment.get("created_at") else None,
+        "verified_at": payment.get("verified_at").isoformat() if payment.get("verified_at") else None
+    }
+
+@api_router.get("/payment/history/{user_id}")
+async def get_payment_history(user_id: str, limit: int = 20):
+    """Get payment history for a user"""
+    payments = await db.payments.find({"user_id": user_id}).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return {
+        "success": True,
+        "user_id": user_id,
+        "total": len(payments),
+        "payments": [{
+            "payment_id": p.get("payment_id"),
+            "order_id": p.get("order_id"),
+            "amount": f"₹{p.get('amount', 0):,.2f}",
+            "status": p.get("status"),
+            "payment_method": p.get("payment_method"),
+            "created_at": p.get("created_at").isoformat() if p.get("created_at") else None
+        } for p in payments]
+    }
+
+@api_router.get("/payment/generate-link")
+async def generate_payment_link(amount: float, user_id: str = "guest", description: str = "Gyan Sultanat Recharge"):
+    """
+    Generate a quick payment link for recharge
+    Indian payment methods (UPI/Card)
+    """
+    now = datetime.now(timezone.utc)
+    link_id = f"LINK-{uuid.uuid4().hex[:8].upper()}"
+    
+    # Generate UPI intent URL
+    upi_intent = f"upi://pay?pa={SULTAN_UPI_ID}&pn=Gyan%20Sultanat&am={amount}&cu=INR&tn={description.replace(' ', '%20')}&tr={link_id}"
+    
+    # Generate QR
+    qr = qrcode.QRCode(version=3, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=12, border=2)
+    qr.add_data(upi_intent)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#1a1a2e", back_color="#ffffff")
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    qr_base64 = f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+    
+    # Store link
+    await db.payment_links.insert_one({
+        "link_id": link_id,
+        "user_id": user_id,
+        "amount": amount,
+        "description": description,
+        "upi_intent": upi_intent,
+        "created_at": now,
+        "expires_at": now + timedelta(hours=24),
+        "status": "active"
+    })
+    
+    return {
+        "success": True,
+        "link_id": link_id,
+        "amount": f"₹{amount:,.2f}",
+        "payment_options": {
+            "upi": {
+                "intent_url": upi_intent,
+                "qr_code": qr_base64,
+                "upi_id": SULTAN_UPI_ID,
+                "supported_apps": ["Google Pay", "PhonePe", "Paytm", "BHIM"]
+            },
+            "instructions": [
+                "1. UPI QR Code স্ক্যান করুন যেকোনো UPI app দিয়ে",
+                "2. অথবা UPI ID তে সরাসরি পেমেন্ট করুন",
+                "3. পেমেন্ট সফল হলে আপনার অ্যাকাউন্টে টাকা যোগ হবে"
+            ]
+        },
+        "expires_at": (now + timedelta(hours=24)).isoformat(),
+        "payoneer_reference": PAYONEER_CUSTOMER_ID,
+        "message": "পেমেন্ট লিংক তৈরি হয়েছে! ২৪ ঘণ্টার মধ্যে পেমেন্ট করুন।"
+    }
+
+@api_router.get("/payment/upi-apps")
+async def get_upi_apps():
+    """Get list of supported UPI apps with deep links"""
+    return {
+        "success": True,
+        "apps": [
+            {
+                "name": "Google Pay",
+                "id": "gpay",
+                "package": "com.google.android.apps.nbu.paisa.user",
+                "icon": "🟢",
+                "deep_link_prefix": "gpay://upi/"
+            },
+            {
+                "name": "PhonePe",
+                "id": "phonepe", 
+                "package": "com.phonepe.app",
+                "icon": "🟣",
+                "deep_link_prefix": "phonepe://pay"
+            },
+            {
+                "name": "Paytm",
+                "id": "paytm",
+                "package": "net.one97.paytm",
+                "icon": "🔵",
+                "deep_link_prefix": "paytmmp://upi/"
+            },
+            {
+                "name": "BHIM",
+                "id": "bhim",
+                "package": "in.org.npci.upiapp",
+                "icon": "🟠",
+                "deep_link_prefix": "upi://pay"
+            },
+            {
+                "name": "Amazon Pay",
+                "id": "amazonpay",
+                "package": "in.amazon.mShop.android.shopping",
+                "icon": "🟡",
+                "deep_link_prefix": "amazonpay://upi/"
+            }
+        ],
+        "default_upi_id": SULTAN_UPI_ID
+    }
+
+# ==================== RECHARGE PACKAGES ====================
+
+@api_router.get("/payment/recharge-packages")
+async def get_recharge_packages():
+    """Get available recharge packages"""
+    return {
+        "success": True,
+        "packages": [
+            {
+                "id": "starter",
+                "name": "Starter Pack",
+                "amount": 49,
+                "coins": 50,
+                "bonus": 0,
+                "popular": False,
+                "description": "শুরু করার জন্য"
+            },
+            {
+                "id": "basic",
+                "name": "Basic Pack",
+                "amount": 99,
+                "coins": 110,
+                "bonus": 10,
+                "popular": False,
+                "description": "10% বোনাস!"
+            },
+            {
+                "id": "popular",
+                "name": "Popular Pack",
+                "amount": 199,
+                "coins": 250,
+                "bonus": 50,
+                "popular": True,
+                "description": "25% বোনাস! সবচেয়ে জনপ্রিয়"
+            },
+            {
+                "id": "premium",
+                "name": "Premium Pack",
+                "amount": 499,
+                "coins": 700,
+                "bonus": 200,
+                "popular": False,
+                "description": "40% বোনাস!"
+            },
+            {
+                "id": "elite",
+                "name": "Elite Pack",
+                "amount": 999,
+                "coins": 1500,
+                "bonus": 500,
+                "popular": False,
+                "description": "50% বোনাস! সেরা মূল্য"
+            },
+            {
+                "id": "sultan",
+                "name": "Sultan Pack 👑",
+                "amount": 2999,
+                "coins": 5000,
+                "bonus": 2000,
+                "popular": False,
+                "description": "66% বোনাস! VIP স্ট্যাটাস"
+            }
+        ],
+        "currency": "INR",
+        "payment_methods": ["upi", "card", "net_banking"]
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
