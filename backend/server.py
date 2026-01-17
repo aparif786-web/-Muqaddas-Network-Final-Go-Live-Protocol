@@ -5973,6 +5973,254 @@ async def get_my_ads(user: User = Depends(get_current_user)):
         "total": len(ads)
     }
 
+# ==================== AI TEACHER APIs ====================
+
+@api_router.get("/ai-teacher/subjects")
+async def get_ai_teacher_subjects():
+    """Get all subjects AI Teacher can help with"""
+    subjects = [
+        {"subject": "mathematics", "name": "गणित (Mathematics)", "icon": "🔢"},
+        {"subject": "science", "name": "विज्ञान (Science)", "icon": "🔬"},
+        {"subject": "history", "name": "इतिहास (History)", "icon": "📜"},
+        {"subject": "geography", "name": "भूगोल (Geography)", "icon": "🌍"},
+        {"subject": "language", "name": "भाषा (Language)", "icon": "📝"},
+        {"subject": "business", "name": "व्यापार (Business)", "icon": "💼"},
+        {"subject": "law", "name": "कानून (Law)", "icon": "⚖️"},
+        {"subject": "health", "name": "स्वास्थ्य (Health)", "icon": "🏥"},
+        {"subject": "technology", "name": "तकनीक (Technology)", "icon": "💻"},
+        {"subject": "psychology", "name": "मनोविज्ञान (Psychology)", "icon": "🧠"},
+        {"subject": "finance", "name": "वित्त (Finance)", "icon": "💰"},
+        {"subject": "general", "name": "सामान्य ज्ञान (General)", "icon": "📚"}
+    ]
+    
+    return {
+        "subjects": subjects,
+        "config": AI_TEACHER_CONFIG,
+        "message": "AI Teacher - Aapka personal shikshak! Koi bhi sawaal poochho!"
+    }
+
+class AITeacherQuestionRequest(BaseModel):
+    subject: str
+    question: str
+    language: str = "Hindi"
+
+@api_router.post("/ai-teacher/ask")
+async def ask_ai_teacher(
+    request: AITeacherQuestionRequest,
+    user: User = Depends(get_current_user)
+):
+    """Ask a question to AI Teacher"""
+    user_id = user.user_id
+    
+    # Check daily question limit
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_questions = await db.ai_teacher_queries.count_documents({
+        "user_id": user_id,
+        "created_at": {"$gte": today_start}
+    })
+    
+    # Check VIP status for limit
+    vip_status = await db.vip_subscriptions.find_one({
+        "user_id": user_id,
+        "is_active": True
+    })
+    
+    daily_limit = AI_TEACHER_CONFIG["max_questions_per_day_vip"] if vip_status else AI_TEACHER_CONFIG["max_questions_per_day_free"]
+    
+    if today_questions >= daily_limit:
+        return {
+            "success": False,
+            "message": f"Daily limit reached ({daily_limit} questions). Upgrade to VIP for more!",
+            "is_vip": bool(vip_status),
+            "questions_used": today_questions,
+            "daily_limit": daily_limit
+        }
+    
+    # Generate AI response (placeholder - integrate with actual AI)
+    query_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    # Smart response based on subject
+    ai_response = generate_ai_teacher_response(request.subject, request.question, request.language)
+    
+    # Save query
+    await db.ai_teacher_queries.insert_one({
+        "query_id": query_id,
+        "user_id": user_id,
+        "subject": request.subject,
+        "question": request.question,
+        "answer": ai_response["answer"],
+        "confidence_score": ai_response["confidence"],
+        "sources": ai_response["sources"],
+        "language": request.language,
+        "helpful_votes": 0,
+        "created_at": now,
+        "answered_at": now
+    })
+    
+    return {
+        "success": True,
+        "query_id": query_id,
+        "question": request.question,
+        "answer": ai_response["answer"],
+        "confidence_score": ai_response["confidence"],
+        "sources": ai_response["sources"],
+        "subject": request.subject,
+        "questions_remaining": daily_limit - today_questions - 1,
+        "trust_features": AI_TEACHER_CONFIG["trust_building_features"]
+    }
+
+def generate_ai_teacher_response(subject: str, question: str, language: str) -> dict:
+    """Generate AI Teacher response (placeholder for actual AI integration)"""
+    # This is a placeholder - integrate with actual AI service
+    responses = {
+        "mathematics": {
+            "answer": f"Aapka sawaal '{question}' bahut accha hai! Mathematics mein yeh concept important hai. Main aapko step-by-step samjhata hoon...",
+            "confidence": 0.85,
+            "sources": ["NCERT Mathematics", "Khan Academy"]
+        },
+        "science": {
+            "answer": f"'{question}' - Yeh ek interesting scientific question hai. Science mein iska explanation yeh hai...",
+            "confidence": 0.88,
+            "sources": ["NCERT Science", "National Geographic"]
+        },
+        "law": {
+            "answer": f"Aapka legal sawaal '{question}' ke baare mein - Indian law ke according...",
+            "confidence": 0.82,
+            "sources": ["Indian Kanoon", "Legal Services India"]
+        },
+        "health": {
+            "answer": f"'{question}' - Health ke baare mein yeh jaankari important hai. Doctor se zaroor consult karein...",
+            "confidence": 0.80,
+            "sources": ["WHO Guidelines", "AIIMS"]
+        },
+        "business": {
+            "answer": f"Business mein '{question}' - Yeh strategy follow karein...",
+            "confidence": 0.83,
+            "sources": ["Harvard Business Review", "Economic Times"]
+        },
+        "psychology": {
+            "answer": f"Manovigyan ke anusaar '{question}' - Mind ka yeh concept samjhein...",
+            "confidence": 0.86,
+            "sources": ["Psychology Today", "NIMHANS"]
+        }
+    }
+    
+    default_response = {
+        "answer": f"Aapka sawaal '{question}' ke baare mein - Main aapko detail mein samjhata hoon. Yeh topic bahut important hai...",
+        "confidence": 0.75,
+        "sources": ["Gyan Sultanat Knowledge Base", "Expert Reviews"]
+    }
+    
+    return responses.get(subject, default_response)
+
+@api_router.post("/ai-teacher/feedback/{query_id}")
+async def give_ai_teacher_feedback(
+    query_id: str,
+    helpful: bool,
+    user: User = Depends(get_current_user)
+):
+    """Give feedback on AI Teacher's answer"""
+    query = await db.ai_teacher_queries.find_one({"query_id": query_id})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    # Update helpful votes
+    update_value = 1 if helpful else -1
+    await db.ai_teacher_queries.update_one(
+        {"query_id": query_id},
+        {"$inc": {"helpful_votes": update_value}}
+    )
+    
+    return {
+        "success": True,
+        "message": "Thank you for your feedback! It helps AI Teacher improve."
+    }
+
+@api_router.get("/ai-teacher/history")
+async def get_ai_teacher_history(
+    limit: int = 20,
+    user: User = Depends(get_current_user)
+):
+    """Get user's AI Teacher conversation history"""
+    user_id = user.user_id
+    
+    queries = await db.ai_teacher_queries.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return {
+        "history": [{
+            "query_id": q["query_id"],
+            "subject": q["subject"],
+            "question": q["question"],
+            "answer": q["answer"],
+            "confidence_score": q["confidence_score"],
+            "helpful_votes": q["helpful_votes"],
+            "created_at": q["created_at"].isoformat()
+        } for q in queries],
+        "total": len(queries)
+    }
+
+# ==================== EDUCATIONAL ADS (Company Promotion) APIs ====================
+
+class RegisterEducationalAdRequest(BaseModel):
+    company_name: str
+    company_description: str
+    educational_content: str  # How to explain company educationally
+    target_subjects: List[str]
+    budget: float
+
+@api_router.post("/educational-ads/register")
+async def register_educational_ad(request: RegisterEducationalAdRequest):
+    """Register a company for educational advertising"""
+    ad_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    await db.educational_ads.insert_one({
+        "ad_id": ad_id,
+        "company_name": request.company_name,
+        "company_description": request.company_description,
+        "educational_content": request.educational_content,
+        "target_subjects": request.target_subjects,
+        "budget": request.budget,
+        "spent": 0.0,
+        "trust_score": 0.0,
+        "user_reviews": 0,
+        "is_verified": False,
+        "is_active": True,
+        "created_at": now
+    })
+    
+    return {
+        "success": True,
+        "message": "Educational ad registered! AI Teacher will explain your company to relevant learners.",
+        "ad_id": ad_id,
+        "status": "pending_verification"
+    }
+
+@api_router.get("/educational-ads/active")
+async def get_active_educational_ads(subject: Optional[str] = None):
+    """Get active educational ads (for AI Teacher to reference)"""
+    query = {"is_active": True, "is_verified": True}
+    if subject:
+        query["target_subjects"] = subject
+    
+    ads = await db.educational_ads.find(query).to_list(50)
+    
+    return {
+        "ads": [{
+            "ad_id": ad["ad_id"],
+            "company_name": ad["company_name"],
+            "company_description": ad["company_description"],
+            "educational_content": ad["educational_content"],
+            "target_subjects": ad["target_subjects"],
+            "trust_score": ad["trust_score"],
+            "user_reviews": ad["user_reviews"]
+        } for ad in ads],
+        "total": len(ads)
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
