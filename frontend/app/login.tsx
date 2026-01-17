@@ -176,9 +176,6 @@ const styles = StyleSheet.create({
     color: '#808080',
     fontStyle: 'italic',
   },
-    fontSize: 16,
-    color: '#A0A0A0',
-  },
   features: {
     marginBottom: 48,
   },
