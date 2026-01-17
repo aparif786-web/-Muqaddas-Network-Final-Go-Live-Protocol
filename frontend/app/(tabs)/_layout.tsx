@@ -90,6 +90,13 @@ export default function TabLayout() {
           ),
         }}
       />
+      {/* Hidden tabs - not shown in tab bar */}
+      <Tabs.Screen
+        name="withdrawal"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
     </Tabs>
   );
 }
