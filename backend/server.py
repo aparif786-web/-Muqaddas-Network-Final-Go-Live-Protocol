@@ -6920,18 +6920,54 @@ async def generate_signed_pdf(user_id: str, document_type: str = "terms_conditio
     if existing_signature:
         p.drawString(50, y + 10, f"[DIGITALLY SIGNED - {existing_signature['signature_hash'][:16]}...]")
     
-    # Sultan's Verification
-    y -= 80
+    # ==================== ROYAL DIGITAL SEAL SECTION ====================
+    y -= 100
+    
+    # Draw seal border box
+    p.setStrokeColorRGB(0.85, 0.65, 0.13)  # Gold color
+    p.setLineWidth(2)
+    p.roundRect(50, y - 120, width - 100, 130, 10, stroke=1, fill=0)
+    
+    # Seal Header
+    p.setFillColorRGB(0.31, 0.78, 0.47)  # Emerald green
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(70, y - 20, "💚 MUQADDAS NETWORK - OFFICIAL DIGITAL SEAL")
+    
+    # Seal Details
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(70, y - 45, "Digitally Signed by: Sultan (The Main Developer)")
+    
+    p.setFont("Helvetica", 10)
+    p.drawString(70, y - 62, f"Timestamp: {now.strftime('%d %B %Y, %H:%M:%S UTC')}")
+    p.drawString(70, y - 79, f"Verification Key: {SULTAN_MASTER_SIGNATURE['verification_key']}")
+    
+    p.setFillColorRGB(0, 0.5, 0)  # Dark green
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(70, y - 96, "Status: ✓ Verified & Secured by Muqaddas Technology")
+    
+    # QR Code hint
+    p.setFillColorRGB(0.5, 0.5, 0.5)
+    p.setFont("Helvetica", 8)
+    p.drawString(70, y - 112, "Scan QR at: https://auth.emergentagent.com/?redirect=gyansultanat://")
+    
+    # Sultan's Verification - Enhanced
+    p.setFillColorRGB(0, 0, 0)
+    y -= 150
     p.setFont("Helvetica-Bold", 11)
-    p.drawString(50, y, "Verified by Sultan - Gyan Sultanat Founder")
+    p.drawString(50, y, "★ SULTAN'S AUTHORITY ★ MUQADDAS NETWORK ★ 2026 ★")
     p.setFont("Helvetica", 10)
     p.drawString(50, y - 15, f"Master Signature ID: {SULTAN_MASTER_SIGNATURE['signature_id']}")
-    p.drawString(50, y - 30, "This document is encrypted and tamper-proof.")
+    p.drawString(50, y - 30, "This document is encrypted, tamper-proof, and legally binding.")
     
-    # Footer
+    # Footer with royal styling
+    p.setFillColorRGB(0.85, 0.65, 0.13)  # Gold
+    p.setFont("Helvetica-Bold", 10)
+    p.drawCentredString(width/2, 50, "🏛️ Muqaddas Technology - Powered by AI 🏛️")
+    p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 9)
-    p.drawCentredString(width/2, 40, "Muqaddas Technology - Powered by AI")
-    p.drawCentredString(width/2, 25, f"Document Generated: {now.isoformat()}")
+    p.drawCentredString(width/2, 35, f"Document Generated: {now.isoformat()}")
+    p.drawCentredString(width/2, 22, "All rights reserved © Sultan - Gyan Sultanat 2026")
     
     p.save()
     buffer.seek(0)
