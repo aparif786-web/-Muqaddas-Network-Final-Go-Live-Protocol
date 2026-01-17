@@ -4902,8 +4902,9 @@ async def get_active_mha_events():
     }
 
 @api_router.post("/events/mha/join/{event_id}")
-async def join_mha_event(event_id: str, user_id: str = Depends(get_current_user)):
+async def join_mha_event(event_id: str, user: User = Depends(get_current_user)):
     """Join an MHA event"""
+    user_id = user.user_id
     # Check event exists and is active
     event = await db.mha_events.find_one({"event_id": event_id, "is_active": True})
     if not event:
