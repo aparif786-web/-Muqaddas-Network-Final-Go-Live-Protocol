@@ -6044,12 +6044,12 @@ async def ask_ai_teacher(
             "daily_limit": daily_limit
         }
     
-    # Generate AI response (placeholder - integrate with actual AI)
+    # Generate AI response using REAL LLM
     query_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     
-    # Smart response based on subject
-    ai_response = generate_ai_teacher_response(request.subject, request.question, request.language)
+    # Use async LLM response
+    ai_response = await generate_ai_teacher_response_llm(request.subject, request.question, request.language)
     
     # Save query
     await db.ai_teacher_queries.insert_one({
