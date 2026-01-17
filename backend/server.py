@@ -346,13 +346,27 @@ class EducationalAd(BaseModel):
 AI_TEACHER_CONFIG = {
     "max_questions_per_day_free": 10,
     "max_questions_per_day_vip": 100,
-    "response_languages": ["Hindi", "English", "Bengali", "Tamil", "Telugu"],
+    "response_languages": [
+        # Indian Languages
+        "Hindi", "Bengali", "Tamil", "Telugu", "Marathi", "Gujarati", 
+        "Kannada", "Malayalam", "Punjabi", "Odia", "Assamese", "Urdu",
+        # International Languages  
+        "English", "Spanish", "French", "German", "Chinese", "Japanese",
+        "Korean", "Arabic", "Portuguese", "Russian", "Italian", "Dutch",
+        "Turkish", "Vietnamese", "Thai", "Indonesian", "Malay", "Persian",
+        "Hebrew", "Polish", "Swedish", "Greek", "Czech", "Romanian",
+        "Hungarian", "Ukrainian", "Swahili", "Filipino", "Nepali", "Sinhala",
+        # Auto-detect
+        "Auto"
+    ],
     "trust_building_features": [
         "Source citation",
         "Fact verification",
         "Expert review badge",
-        "Community validation"
-    ]
+        "Community validation",
+        "Multilingual support (35+ languages)"
+    ],
+    "total_languages_supported": 35
 }
 
 # Registration Fee Config
