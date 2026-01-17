@@ -125,7 +125,7 @@ export default function HomeScreen() {
             {/* VIP Card */}
             <TouchableOpacity onPress={() => router.push('/(tabs)/vip')}>
               <LinearGradient
-                colors={vipStatus ? getVIPGradient(vipStatus.vip_level) : ['#404040', '#303030"] as const}
+                colors={vipStatus ? getVIPGradient(vipStatus.vip_level) : ['#404040', '#303030']}
                 style={styles.vipCard}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
