@@ -7016,8 +7016,18 @@ AGENCY_COMMISSION_RATES = {
 }
 
 SYSTEM_TAX_RATE = 0.45  # 45% Google/System Tax
-CHARITY_RATE = 0.02     # 2% Charity
-REGISTRATION_FEE = 1.0  # ₹1 Registration fee
+CHARITY_RATE = 0.02     # 2% Charity - ALWAYS ACTIVE
+REGISTRATION_FEE = 0.0  # ₹0 - FREE ENTRY (No registration fee)
+
+# ==================== MUQADDAS NETWORK PROTOCOLS ====================
+MUQADDAS_PROTOCOLS = {
+    "free_entry": True,           # All users get FREE direct entry
+    "day1_zero_profit": True,     # Day-1 Zero Profit Protocol
+    "registration_fee": 0.0,      # ₹0 - Completely FREE
+    "withdrawal_enabled": True,   # Users can withdraw freely
+    "charity_rate": 0.02,         # 2% charity ALWAYS active
+    "gift_income_charity": 0.02,  # 2% from gift income to charity
+}
 
 @api_router.post("/finance/calculate")
 async def calculate_financial_breakdown(request: FinancialCalculationRequest):
