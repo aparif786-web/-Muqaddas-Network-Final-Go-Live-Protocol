@@ -8194,6 +8194,137 @@ async def verify_muqaddas_status():
         "message": "Muqaddas Network সম্পূর্ণ ভেরিফাইড এবং সুরক্ষিত!"
     }
 
+# ==================== PRIVACY POLICY & LEGAL ====================
+
+@api_router.get("/legal/privacy-policy")
+async def get_privacy_policy():
+    """Get Privacy Policy content for Play Store"""
+    return {
+        "success": True,
+        "title": "Privacy Policy - Gyan Sultanat",
+        "last_updated": "January 17, 2026",
+        "owner": {
+            "name": "Arif Ullah",
+            "business": "AP Aayushka Big Design Bazaar",
+            "gstin": SULTAN_IDENTITY["gstin"],
+            "contact": {
+                "email": "support@gyansultanat.com",
+                "phone": SULTAN_IDENTITY["phone"],
+                "address": "Mitham Bangali, West Bengal, India"
+            }
+        },
+        "sections": {
+            "information_collected": [
+                "Personal Information (name, email, phone)",
+                "Authentication Data (Google OAuth)",
+                "Payment Information (UPI, transactions)",
+                "Usage Data (app interactions, scores)",
+                "Device Information"
+            ],
+            "how_we_use": [
+                "Provide and maintain services",
+                "Process payments and transactions",
+                "Personalize learning experience",
+                "Send notifications about rewards",
+                "Improve AI Teacher responses",
+                "Process charity contributions (2%)"
+            ],
+            "data_sharing": [
+                "Payment processors (for transactions)",
+                "AI service providers (for AI Teacher)",
+                "Analytics services",
+                "Legal authorities (when required)"
+            ],
+            "security": [
+                "Encryption of sensitive data",
+                "Digital signature verification",
+                "Secure server infrastructure",
+                "Regular security audits"
+            ],
+            "user_rights": [
+                "Access your personal data",
+                "Request data correction",
+                "Request data deletion",
+                "Opt-out of marketing",
+                "Withdraw consent"
+            ]
+        },
+        "verification": {
+            "key": SULTAN_MASTER_SIGNATURE["verification_key"],
+            "status": "Verified by Muqaddas Technology"
+        }
+    }
+
+@api_router.get("/legal/terms")
+async def get_terms_of_service():
+    """Get Terms of Service"""
+    return {
+        "success": True,
+        "title": "Terms of Service - Gyan Sultanat",
+        "last_updated": "January 17, 2026",
+        "platform": "Gyan Sultanat - Muqaddas Network",
+        "key_terms": {
+            "eligibility": "Open to all users. Parental consent required for users under 18.",
+            "account": "Users must provide accurate information. One account per person.",
+            "payments": {
+                "currency": "INR",
+                "methods": ["UPI", "Card", "Net Banking"],
+                "refund_policy": "Refunds processed within 7 business days",
+                "charity": "2% of all transactions donated to charity"
+            },
+            "intellectual_property": "All content owned by Muqaddas Network",
+            "prohibited_activities": [
+                "Fraudulent activities",
+                "Multiple accounts",
+                "Sharing account credentials",
+                "Automated access or bots"
+            ],
+            "dispute_resolution": "Governed by Indian law. Disputes resolved in West Bengal courts."
+        },
+        "owner": SULTAN_IDENTITY["name"],
+        "verification": SULTAN_MASTER_SIGNATURE["verification_key"]
+    }
+
+@api_router.get("/app/release-info")
+async def get_release_info():
+    """Get app release information for Play Store"""
+    return {
+        "success": True,
+        "app_name": "Gyan Sultanat - ज्ञान सल्तनत",
+        "package_name": "com.muqaddas.gyansultanat",
+        "version": {
+            "name": "1.0.0",
+            "code": 1
+        },
+        "category": "Education",
+        "content_rating": "Everyone",
+        "short_description": "শিক্ষা থেকে আয় করুন! AI Teacher, Quiz, Rewards - সব এক অ্যাপে।",
+        "features": [
+            "🤖 AI Teacher (GPT-4 powered, 100+ languages)",
+            "🎮 Gyan Yuddh (Daily quiz competitions)",
+            "💰 Triple Wallet (Coins, Diamonds, Rupees)",
+            "💳 UPI Payment (Secure Indian payments)",
+            "👑 VIP Membership",
+            "🏆 Leaderboards & Crowns",
+            "💚 2% Charity Integration"
+        ],
+        "requirements": {
+            "min_sdk": 24,
+            "target_sdk": 34,
+            "min_android": "7.0 (Nougat)",
+            "permissions": ["INTERNET", "CAMERA", "VIBRATE"]
+        },
+        "owner": {
+            "name": SULTAN_IDENTITY["name"],
+            "business": SULTAN_IDENTITY["business_name"],
+            "verified": True
+        },
+        "links": {
+            "apk": "https://expo.dev/artifacts/eas/vVTHUoEo1sWJnBCZaEyeTU.apk",
+            "share": "https://app.emergent.sh/share?app=knowledge-hub-386"
+        }
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
