@@ -553,4 +553,137 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#808080',
   },
+  // Wallet Section Styles
+  walletSection: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
+  },
+  walletHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  walletTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  tripleWallet: {
+    gap: 12,
+  },
+  walletCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  walletCardGradient: {
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  walletCardLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    flex: 1,
+    marginLeft: 12,
+  },
+  walletCardAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  walletCardCurrency: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    marginLeft: 4,
+  },
+  walletActions: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 8,
+  },
+  walletActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    gap: 6,
+  },
+  withdrawBtn: {
+    backgroundColor: 'rgba(255, 152, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 152, 0, 0.3)',
+  },
+  walletActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1A1A2E',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  modalBody: {
+    alignItems: 'center',
+  },
+  withdrawLabel: {
+    fontSize: 14,
+    color: '#808080',
+    marginBottom: 8,
+  },
+  withdrawAvailable: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 16,
+  },
+  withdrawNote: {
+    fontSize: 12,
+    color: '#808080',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 18,
+  },
+  withdrawSubmitBtn: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  withdrawSubmitGradient: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  withdrawSubmitText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1A1A2E',
+  },
 });
