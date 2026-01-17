@@ -5084,6 +5084,363 @@ async def get_charity_status():
         "message": "45% of company income goes to charity after ₹10 Billion revenue milestone"
     }
 
+# ==================== UNIVERSAL PARTNER APIs ====================
+
+class PartnerApplicationRequest(BaseModel):
+    organization_name: str
+    partner_type: str
+    description: str
+    email: str
+    website: Optional[str] = None
+    phone: Optional[str] = None
+    documents: List[str] = []
+
+@api_router.post("/partners/apply")
+async def apply_as_partner(request: PartnerApplicationRequest):
+    """Apply to become a Universal Partner (NGO, Trust, Education Platform)"""
+    # Check if already applied
+    existing = await db.partners.find_one({"email": request.email})
+    if existing:
+        return {
+            "success": False,
+            "message": "Application already exists with this email",
+            "partner_id": existing["partner_id"],
+            "status": existing["status"]
+        }
+    
+    partner_id = str(uuid.uuid4())
+    channel_room_id = f"room_{partner_id[:8]}"
+    now = datetime.now(timezone.utc)
+    
+    await db.partners.insert_one({
+        "partner_id": partner_id,
+        "organization_name": request.organization_name,
+        "partner_type": request.partner_type,
+        "description": request.description,
+        "email": request.email,
+        "website": request.website,
+        "phone": request.phone,
+        "documents": request.documents,
+        "status": PartnerStatus.PENDING.value,
+        "verified_badge": False,
+        "channel_room_id": channel_room_id,
+        "profit_share_percent": 10.0,
+        "total_students": 0,
+        "total_courses": 0,
+        "total_earnings": 0.0,
+        "rating": 0.0,
+        "created_at": now,
+        "verified_at": None
+    })
+    
+    return {
+        "success": True,
+        "message": "Application submitted successfully! Our team will review and verify.",
+        "partner_id": partner_id,
+        "channel_room_id": channel_room_id,
+        "status": "pending"
+    }
+
+@api_router.get("/partners/verified")
+async def get_verified_partners(partner_type: Optional[str] = None):
+    """Get all verified partners"""
+    query = {"status": PartnerStatus.VERIFIED.value}
+    if partner_type:
+        query["partner_type"] = partner_type
+    
+    partners = await db.partners.find(query).to_list(100)
+    
+    return {
+        "partners": [{
+            "partner_id": p["partner_id"],
+            "organization_name": p["organization_name"],
+            "partner_type": p["partner_type"],
+            "description": p["description"],
+            "website": p.get("website"),
+            "verified_badge": p["verified_badge"],
+            "channel_room_id": p["channel_room_id"],
+            "total_students": p["total_students"],
+            "total_courses": p["total_courses"],
+            "rating": p["rating"]
+        } for p in partners],
+        "total": len(partners)
+    }
+
+@api_router.get("/partners/{partner_id}")
+async def get_partner_details(partner_id: str):
+    """Get detailed partner information"""
+    partner = await db.partners.find_one({"partner_id": partner_id})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    # Get partner's courses
+    courses = await db.partner_courses.find({"partner_id": partner_id, "is_active": True}).to_list(50)
+    
+    return {
+        "partner": {
+            "partner_id": partner["partner_id"],
+            "organization_name": partner["organization_name"],
+            "partner_type": partner["partner_type"],
+            "description": partner["description"],
+            "website": partner.get("website"),
+            "verified_badge": partner["verified_badge"],
+            "channel_room_id": partner["channel_room_id"],
+            "total_students": partner["total_students"],
+            "total_courses": partner["total_courses"],
+            "rating": partner["rating"],
+            "profit_share_percent": partner["profit_share_percent"]
+        },
+        "courses": [{
+            "course_id": c["course_id"],
+            "title": c["title"],
+            "description": c["description"],
+            "category": c["category"],
+            "difficulty": c["difficulty"],
+            "duration_hours": c["duration_hours"],
+            "knowledge_points": c["knowledge_points"],
+            "coin_reward": c["coin_reward"],
+            "certificate_enabled": c["certificate_enabled"]
+        } for c in courses]
+    }
+
+# ==================== EDUCATION-TO-EARN (E2E) APIs ====================
+
+class CreateCourseRequest(BaseModel):
+    title: str
+    description: str
+    category: str
+    difficulty: str
+    duration_hours: int
+    knowledge_points: int
+    coin_reward: float = 0.0
+    certificate_enabled: bool = True
+
+@api_router.post("/partners/{partner_id}/courses")
+async def create_partner_course(partner_id: str, request: CreateCourseRequest):
+    """Create a new course for a partner"""
+    partner = await db.partners.find_one({"partner_id": partner_id, "status": PartnerStatus.VERIFIED.value})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Verified partner not found")
+    
+    course_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    await db.partner_courses.insert_one({
+        "course_id": course_id,
+        "partner_id": partner_id,
+        "title": request.title,
+        "description": request.description,
+        "category": request.category,
+        "difficulty": request.difficulty,
+        "duration_hours": request.duration_hours,
+        "knowledge_points": request.knowledge_points,
+        "coin_reward": request.coin_reward,
+        "certificate_enabled": request.certificate_enabled,
+        "is_active": True,
+        "created_at": now
+    })
+    
+    # Update partner course count
+    await db.partners.update_one(
+        {"partner_id": partner_id},
+        {"$inc": {"total_courses": 1}}
+    )
+    
+    return {
+        "success": True,
+        "message": "Course created successfully!",
+        "course_id": course_id
+    }
+
+@api_router.post("/courses/{course_id}/enroll")
+async def enroll_in_course(course_id: str, user: User = Depends(get_current_user)):
+    """Enroll in a partner course"""
+    user_id = user.user_id
+    course = await db.partner_courses.find_one({"course_id": course_id, "is_active": True})
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    # Check if already enrolled
+    existing = await db.student_progress.find_one({
+        "user_id": user_id,
+        "course_id": course_id
+    })
+    if existing:
+        return {
+            "success": False,
+            "message": "Already enrolled in this course",
+            "progress_id": existing["progress_id"]
+        }
+    
+    progress_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    await db.student_progress.insert_one({
+        "progress_id": progress_id,
+        "user_id": user_id,
+        "partner_id": course["partner_id"],
+        "course_id": course_id,
+        "status": "enrolled",
+        "knowledge_points_earned": 0,
+        "completion_percent": 0.0,
+        "started_at": now,
+        "completed_at": None,
+        "certificate_id": None
+    })
+    
+    # Update partner student count
+    await db.partners.update_one(
+        {"partner_id": course["partner_id"]},
+        {"$inc": {"total_students": 1}}
+    )
+    
+    return {
+        "success": True,
+        "message": f"Successfully enrolled in '{course['title']}'!",
+        "progress_id": progress_id,
+        "knowledge_points_available": course["knowledge_points"],
+        "coin_reward_available": course["coin_reward"]
+    }
+
+@api_router.post("/courses/{course_id}/complete")
+async def complete_course(course_id: str, user: User = Depends(get_current_user)):
+    """Mark course as completed and earn rewards"""
+    user_id = user.user_id
+    progress = await db.student_progress.find_one({
+        "user_id": user_id,
+        "course_id": course_id
+    })
+    if not progress:
+        raise HTTPException(status_code=404, detail="Not enrolled in this course")
+    
+    if progress["status"] == "completed":
+        return {
+            "success": False,
+            "message": "Course already completed",
+            "certificate_id": progress.get("certificate_id")
+        }
+    
+    course = await db.partner_courses.find_one({"course_id": course_id})
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    now = datetime.now(timezone.utc)
+    certificate_id = f"CERT-{uuid.uuid4().hex[:8].upper()}"
+    
+    # Update progress
+    await db.student_progress.update_one(
+        {"progress_id": progress["progress_id"]},
+        {
+            "$set": {
+                "status": "completed",
+                "completion_percent": 100.0,
+                "knowledge_points_earned": course["knowledge_points"],
+                "completed_at": now,
+                "certificate_id": certificate_id if course["certificate_enabled"] else None
+            }
+        }
+    )
+    
+    # Update user's total knowledge points
+    await db.user_education.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {
+                "total_knowledge_points": course["knowledge_points"],
+                "courses_completed": 1
+            },
+            "$setOnInsert": {"user_id": user_id, "created_at": now}
+        },
+        upsert=True
+    )
+    
+    # Add coin reward to user wallet
+    if course["coin_reward"] > 0:
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {"$inc": {"coins_balance": course["coin_reward"]}}
+        )
+    
+    # Calculate partner earnings (profit share)
+    partner = await db.partners.find_one({"partner_id": course["partner_id"]})
+    partner_earnings = course["coin_reward"] * (partner["profit_share_percent"] / 100)
+    await db.partners.update_one(
+        {"partner_id": course["partner_id"]},
+        {"$inc": {"total_earnings": partner_earnings}}
+    )
+    
+    # Send notification
+    await create_notification(
+        user_id=user_id,
+        title="🎓 Course Completed!",
+        message=f"Congratulations! You've completed '{course['title']}' and earned {course['knowledge_points']} Knowledge Points + {course['coin_reward']} Coins!",
+        notification_type="course_completed"
+    )
+    
+    return {
+        "success": True,
+        "message": f"Course completed successfully!",
+        "rewards": {
+            "knowledge_points": course["knowledge_points"],
+            "coins": course["coin_reward"],
+            "certificate_id": certificate_id if course["certificate_enabled"] else None
+        }
+    }
+
+@api_router.get("/education/my-progress")
+async def get_my_education_progress(user: User = Depends(get_current_user)):
+    """Get user's education progress and level"""
+    user_id = user.user_id
+    
+    # Get user education stats
+    edu_stats = await db.user_education.find_one({"user_id": user_id}) or {
+        "total_knowledge_points": 0,
+        "courses_completed": 0
+    }
+    
+    total_points = edu_stats.get("total_knowledge_points", 0)
+    
+    # Determine education level (Gamified Journey)
+    current_level = UserEducationLevel.STUDENT
+    next_level = UserEducationLevel.LEARNER
+    points_to_next = 100
+    
+    for level, data in EDUCATION_LEVELS.items():
+        if total_points >= data["min_points"]:
+            current_level = level
+    
+    # Find next level
+    levels_list = list(EDUCATION_LEVELS.keys())
+    current_index = levels_list.index(current_level)
+    if current_index < len(levels_list) - 1:
+        next_level = levels_list[current_index + 1]
+        points_to_next = EDUCATION_LEVELS[next_level]["min_points"] - total_points
+    else:
+        next_level = None
+        points_to_next = 0
+    
+    level_data = EDUCATION_LEVELS[current_level]
+    
+    # Get enrolled courses
+    enrolled = await db.student_progress.find({"user_id": user_id}).to_list(50)
+    
+    return {
+        "level": {
+            "current": current_level.value,
+            "title": level_data["title"],
+            "badge": level_data["badge"],
+            "next_level": next_level.value if next_level else None,
+            "points_to_next": max(0, points_to_next)
+        },
+        "stats": {
+            "total_knowledge_points": total_points,
+            "courses_completed": edu_stats.get("courses_completed", 0),
+            "courses_enrolled": len(enrolled)
+        },
+        "can_become_host": total_points >= 500,  # Certified Host eligibility
+        "can_become_agent": total_points >= 2000  # Qualified Agent eligibility
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
