@@ -3,6 +3,7 @@
     "name": "Gyan Sultanat",
     "slug": "gyan-sultanat",
     "version": "1.0.0",
+    "description": "Gyaan se Aay, Apne Sapne Sajaye! - India's #1 Education & Earning Platform",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "gyansultanat",
