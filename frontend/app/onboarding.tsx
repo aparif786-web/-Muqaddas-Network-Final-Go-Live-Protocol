@@ -86,7 +86,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-  const [showAIMessage, setShowAIMessage] = useState(false);
+  const [showGyanMessage, setShowGyanMessage] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -110,14 +110,14 @@ export default function OnboardingScreen() {
 
     // Show AI message after delay
     const timer = setTimeout(() => {
-      setShowAIMessage(true);
+      setShowGyanMessage(true);
     }, 800);
 
     return () => clearTimeout(timer);
   }, [currentStep]);
 
   const handleNext = () => {
-    setShowAIMessage(false);
+    setShowGyanMessage(false);
     if (currentStep < ONBOARDING_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -192,14 +192,14 @@ export default function OnboardingScreen() {
               {/* Description */}
               <Text style={styles.description}>{step.description}</Text>
 
-              {/* AI Guide Message */}
-              {showAIMessage && (
+              {/* Gyan Guide Message */}
+              {showGyanMessage && (
                 <Animated.View style={styles.aiMessageContainer}>
                   <View style={styles.aiAvatar}>
                     <Text style={styles.aiAvatarText}>🤖</Text>
                   </View>
                   <View style={styles.aiMessageBubble}>
-                    <Text style={styles.aiLabel}>AI Guide</Text>
+                    <Text style={styles.gyanLabel}>Gyan Guide</Text>
                     <Text style={styles.aiMessage}>{step.aiMessage}</Text>
                   </View>
                 </Animated.View>
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   aiMessageBubble: {
     flex: 1,
   },
-  aiLabel: {
+  gyanLabel: {
     fontSize: 12,
     color: '#FFD700',
     fontWeight: '600',
