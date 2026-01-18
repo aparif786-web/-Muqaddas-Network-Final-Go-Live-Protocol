@@ -22,9 +22,9 @@
     "playstore": {
       "distribution": "store",
       "android": {
-        "buildType": "app-bundle",
-        "credentialsSource": "remote"
-      }
+        "buildType": "app-bundle"
+      },
+      "withoutCredentials": true
     }
   }
 }
