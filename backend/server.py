@@ -306,7 +306,7 @@ class TalentAdvertisement(BaseModel):
 
 # ==================== AI TEACHER SYSTEM ====================
 
-class AITeacherSubject(str, Enum):
+class GyanMindSubject(str, Enum):
     MATHEMATICS = "mathematics"
     SCIENCE = "science"
     HISTORY = "history"
@@ -320,10 +320,10 @@ class AITeacherSubject(str, Enum):
     FINANCE = "finance"
     GENERAL = "general"
 
-class AITeacherQuery(BaseModel):
+class GyanMindQuery(BaseModel):
     query_id: str
     user_id: str
-    subject: AITeacherSubject
+    subject: GyanMindSubject
     question: str
     answer: Optional[str] = None
     confidence_score: float = 0.0
@@ -332,10 +332,10 @@ class AITeacherQuery(BaseModel):
     created_at: datetime
     answered_at: Optional[datetime] = None
 
-class AITeacherSession(BaseModel):
+class GyanMindSession(BaseModel):
     session_id: str
     user_id: str
-    subject: AITeacherSubject
+    subject: GyanMindSubject
     messages: List[dict] = []  # Chat history
     started_at: datetime
     ended_at: Optional[datetime] = None
@@ -354,7 +354,7 @@ class EducationalAd(BaseModel):
     created_at: datetime
 
 # Gyan Mind Trigger Configuration
-AI_TEACHER_CONFIG = {
+GYAN_MIND_CONFIG = {
     "max_questions_per_day_free": 10,
     "max_questions_per_day_vip": 100,
     "response_languages": [
@@ -467,20 +467,20 @@ VALUE_PROPOSITIONS = {
     "advertiser": "Advertise to millions of engaged learners!"
 }
 
-# AI Service Plans
+# Gyan Service Plans
 AI_SERVICE_PLANS = {
     "basic": {
-        "name": "Basic AI",
+        "name": "Basic Gyan",
         "price": 99,  # ₹99/month
-        "features": ["AI Content Suggestions", "Basic Analytics", "Email Support"]
+        "features": ["Gyan Content Suggestions", "Basic Analytics", "Email Support"]
     },
     "pro": {
-        "name": "Pro AI",
+        "name": "Pro Gyan",
         "price": 299,  # ₹299/month
-        "features": ["AI Content Creation", "Advanced Analytics", "Priority Support", "AI Chat Assistant"]
+        "features": ["Gyan Content Creation", "Advanced Analytics", "Priority Support", "Gyan Mind Assistant"]
     },
     "enterprise": {
-        "name": "Enterprise AI",
+        "name": "Enterprise Gyan",
         "price": 999,  # ₹999/month
         "features": ["Full AI Suite", "Custom AI Training", "24/7 Support", "API Access", "White Label"]
     }
@@ -6112,18 +6112,18 @@ async def get_ai_teacher_subjects():
     
     return {
         "subjects": subjects,
-        "config": AI_TEACHER_CONFIG,
+        "config": GYAN_MIND_CONFIG,
         "message": "Gyan Mind Trigger - Aapka personal shikshak! Koi bhi sawaal poochho!"
     }
 
-class AITeacherQuestionRequest(BaseModel):
+class GyanMindQuestionRequest(BaseModel):
     subject: str
     question: str
     language: str = "Hindi"
 
 @api_router.post("/ai-teacher/ask")
 async def ask_ai_teacher(
-    request: AITeacherQuestionRequest,
+    request: GyanMindQuestionRequest,
     user: User = Depends(get_current_user)
 ):
     """Ask a question to Gyan Mind Trigger"""
@@ -6142,7 +6142,7 @@ async def ask_ai_teacher(
         "is_active": True
     })
     
-    daily_limit = AI_TEACHER_CONFIG["max_questions_per_day_vip"] if vip_status else AI_TEACHER_CONFIG["max_questions_per_day_free"]
+    daily_limit = GYAN_MIND_CONFIG["max_questions_per_day_vip"] if vip_status else GYAN_MIND_CONFIG["max_questions_per_day_free"]
     
     if today_questions >= daily_limit:
         return {
@@ -6184,7 +6184,7 @@ async def ask_ai_teacher(
         "sources": ai_response["sources"],
         "subject": request.subject,
         "questions_remaining": daily_limit - today_questions - 1,
-        "trust_features": AI_TEACHER_CONFIG["trust_building_features"]
+        "trust_features": GYAN_MIND_CONFIG["trust_building_features"]
     }
 
 async def generate_ai_teacher_response_llm(subject: str, question: str, language: str) -> dict:
