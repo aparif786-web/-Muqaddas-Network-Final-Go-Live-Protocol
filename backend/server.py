@@ -8482,22 +8482,6 @@ async def get_terms_of_service():
             "status": "✅ Legally Verified & GST Registered"
         }
     }
-                "methods": ["UPI", "Card", "Net Banking"],
-                "refund_policy": "Refunds processed within 7 business days",
-                "charity": "2% of all transactions donated to charity"
-            },
-            "intellectual_property": "All content owned by Muqaddas Network",
-            "prohibited_activities": [
-                "Fraudulent activities",
-                "Multiple accounts",
-                "Sharing account credentials",
-                "Automated access or bots"
-            ],
-            "dispute_resolution": "Governed by Indian law. Disputes resolved in West Bengal courts."
-        },
-        "owner": SULTAN_IDENTITY["name"],
-        "verification": SULTAN_MASTER_SIGNATURE["verification_key"]
-    }
 
 @api_router.get("/app/release-info")
 async def get_release_info():
