@@ -23,7 +23,7 @@ interface Subject {
 
 interface Message {
   id: string;
-  type: 'user' | 'ai';
+  type: 'user' | 'gyan';
   text: string;
   subject?: string;
   confidence?: number;
@@ -31,7 +31,7 @@ interface Message {
   timestamp: Date;
 }
 
-export default function AITeacherScreen() {
+export default function GyanGuruScreen() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('general');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -45,8 +45,8 @@ export default function AITeacherScreen() {
     // Add welcome message
     setMessages([{
       id: '1',
-      type: 'ai',
-      text: '🙏 नमस्ते! Main aapka AI Teacher hoon। Koi bhi sawaal poochho - Mathematics, Science, Law, Health, ya kuch bhi! Main aapki madad ke liye yahan hoon।',
+      type: 'gyan',
+      text: '🙏 नमस्ते! Main aapka Gyan Guru hoon। Koi bhi sawaal poochho - Mathematics, Science, Law, Health, ya kuch bhi! Main aapki madad ke liye yahan hoon।',
       timestamp: new Date()
     }]);
   }, []);
@@ -83,21 +83,21 @@ export default function AITeacherScreen() {
       });
 
       if (response.data.success) {
-        const aiMessage: Message = {
+        const gyanMessage: Message = {
           id: (Date.now() + 1).toString(),
-          type: 'ai',
+          type: 'gyan',
           text: response.data.answer,
           subject: response.data.subject,
           confidence: response.data.confidence_score,
           sources: response.data.sources,
           timestamp: new Date()
         };
-        setMessages(prev => [...prev, aiMessage]);
+        setMessages(prev => [...prev, gyanMessage]);
         setQuestionsRemaining(response.data.questions_remaining);
       } else {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
-          type: 'ai',
+          type: 'gyan',
           text: response.data.message || 'Kuch galat ho gaya. Kripya dobara try karein.',
           timestamp: new Date()
         };
@@ -106,7 +106,7 @@ export default function AITeacherScreen() {
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
+        type: 'gyan',
         text: 'Network error. Kripya apna internet connection check karein.',
         timestamp: new Date()
       };
@@ -124,21 +124,21 @@ export default function AITeacherScreen() {
         key={message.id}
         style={[
           styles.messageContainer,
-          isUser ? styles.userMessageContainer : styles.aiMessageContainer
+          isUser ? styles.userMessageContainer : styles.gyanMessageContainer
         ]}
       >
         {!isUser && (
-          <View style={styles.aiAvatar}>
-            <Text style={styles.aiAvatarText}>🤖</Text>
+          <View style={styles.gyanAvatar}>
+            <Text style={styles.gyanAvatarText}>🧠</Text>
           </View>
         )}
         <View style={[
           styles.messageBubble,
-          isUser ? styles.userBubble : styles.aiBubble
+          isUser ? styles.userBubble : styles.gyanBubble
         ]}>
           <Text style={[
             styles.messageText,
-            isUser ? styles.userMessageText : styles.aiMessageText
+            isUser ? styles.userMessageText : styles.gyanMessageText
           ]}>
             {message.text}
           </Text>
@@ -146,7 +146,7 @@ export default function AITeacherScreen() {
           {message.confidence && (
             <View style={styles.confidenceContainer}>
               <Text style={styles.confidenceText}>
-                Confidence: {(message.confidence * 100).toFixed(0)}%
+                Gyan Score: {(message.confidence * 100).toFixed(0)}%
               </Text>
             </View>
           )}
@@ -174,9 +174,9 @@ export default function AITeacherScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.headerIcon}>🤖</Text>
+              <Text style={styles.headerIcon}>🧠</Text>
               <View>
-                <Text style={styles.headerTitle}>AI Teacher</Text>
+                <Text style={styles.headerTitle}>Gyan Guru</Text>
                 <Text style={styles.headerSubtitle}>Aapka Personal Shikshak</Text>
               </View>
             </View>
@@ -224,12 +224,12 @@ export default function AITeacherScreen() {
             
             {isLoading && (
               <View style={styles.loadingContainer}>
-                <View style={styles.aiAvatar}>
-                  <Text style={styles.aiAvatarText}>🤖</Text>
+                <View style={styles.gyanAvatar}>
+                  <Text style={styles.gyanAvatarText}>🧠</Text>
                 </View>
                 <View style={styles.typingBubble}>
                   <ActivityIndicator size="small" color="#FFD700" />
-                  <Text style={styles.typingText}>Soch raha hoon...</Text>
+                  <Text style={styles.typingText}>Gyan dhundh raha hoon...</Text>
                 </View>
               </View>
             )}
@@ -376,10 +376,10 @@ const styles = StyleSheet.create({
   userMessageContainer: {
     justifyContent: 'flex-end',
   },
-  aiMessageContainer: {
+  gyanMessageContainer: {
     justifyContent: 'flex-start',
   },
-  aiAvatar: {
+  gyanAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
   },
-  aiAvatarText: {
+  gyanAvatarText: {
     fontSize: 20,
   },
   messageBubble: {
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
     marginLeft: 'auto',
   },
-  aiBubble: {
+  gyanBubble: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderBottomLeftRadius: 4,
   },
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   userMessageText: {
     color: '#1A1A2E',
   },
-  aiMessageText: {
+  gyanMessageText: {
     color: '#FFFFFF',
   },
   confidenceContainer: {
