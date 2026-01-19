@@ -3,7 +3,7 @@
     "name": "Gyan Sultanat",
     "slug": "mugaddas-network",
     "version": "1.0.0",
-    "description": "Gyaan se Aay, Apne Sapne Sajaye! - India's #1 Education & Earning Platform",
+    "description": "Gyaan se Aay, Apne Sapne Sajaye! - India's #1 Education & Earning Platform by Muqaddas Technology",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "gyansultanat",
@@ -11,7 +11,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gyansultanat.app"
+      "bundleIdentifier": "com.gyansultanat.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camera for profile photos and content",
+        "NSPhotoLibraryUsageDescription": "Access photos for sharing content",
+        "NSMicrophoneUsageDescription": "Microphone for voice messages"
+      }
     },
     "android": {
       "package": "com.gyansultanat.app",
@@ -22,7 +28,11 @@
       "versionCode": 1,
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -42,6 +52,12 @@
         "projectId": "59db773b-0bd4-4c7c-bc04-e2a361f880ad"
       }
     },
-    "owner": "muqaddas_network"
+    "owner": "muqaddas_network",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/59db773b-0bd4-4c7c-bc04-e2a361f880ad"
+    }
   }
 }
