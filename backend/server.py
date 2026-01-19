@@ -129,7 +129,7 @@ class VIPLevel(BaseModel):
     education_discount: float = 0.0
     priority_support: bool = False
     withdrawal_priority: bool = False
-    exclusive_games: bool = False
+    exclusive_challenges: bool = False
     badge_color: str = "#808080"
     icon: str = "star"
 
@@ -594,7 +594,7 @@ VIP_LEVELS_DATA = [
         "education_discount": 0,
         "priority_support": False,
         "withdrawal_priority": False,
-        "exclusive_games": False,
+        "exclusive_challenges": False,
         "badge_color": "#808080",
         "icon": "user"
     },
@@ -608,7 +608,7 @@ VIP_LEVELS_DATA = [
         "education_discount": 5,
         "priority_support": False,
         "withdrawal_priority": False,
-        "exclusive_games": False,
+        "exclusive_challenges": False,
         "badge_color": "#CD7F32",
         "icon": "star"
     },
@@ -622,7 +622,7 @@ VIP_LEVELS_DATA = [
         "education_discount": 10,
         "priority_support": True,
         "withdrawal_priority": False,
-        "exclusive_games": False,
+        "exclusive_challenges": False,
         "badge_color": "#C0C0C0",
         "icon": "star"
     },
@@ -636,7 +636,7 @@ VIP_LEVELS_DATA = [
         "education_discount": 15,
         "priority_support": True,
         "withdrawal_priority": True,
-        "exclusive_games": True,
+        "exclusive_challenges": True,
         "badge_color": "#FFD700",
         "icon": "crown"
     },
@@ -650,7 +650,7 @@ VIP_LEVELS_DATA = [
         "education_discount": 20,
         "priority_support": True,
         "withdrawal_priority": True,
-        "exclusive_games": True,
+        "exclusive_challenges": True,
         "badge_color": "#E5E4E2",
         "icon": "crown"
     },
@@ -664,7 +664,7 @@ VIP_LEVELS_DATA = [
         "education_discount": 30,
         "priority_support": True,
         "withdrawal_priority": True,
-        "exclusive_games": True,
+        "exclusive_challenges": True,
         "badge_color": "#B9F2FF",
         "icon": "diamond"
     }
@@ -2724,36 +2724,36 @@ async def get_lucky_wallet_config():
 async def get_lucky_wallet_stats(current_user: User = Depends(get_current_user)):
     """Get user's Lucky Wallet game statistics"""
     # Get user's game history
-    games = await db.lucky_wallet_games.find(
+    challenges = await db.lucky_wallet_challenges.find(
         {"user_id": current_user.user_id},
         {"_id": 0}
     ).to_list(1000)
     
-    total_games = len(games)
-    wins = sum(1 for g in games if g["result"] == "win")
-    losses = total_games - wins
-    total_bet = sum(g["bet_amount"] for g in games)
-    total_won = sum(g["won_amount"] for g in games if g["result"] == "win")
-    total_charity = sum(g["charity_amount"] for g in games)
+    total_challenges = len(challenges)
+    wins = sum(1 for g in challenges if g["result"] == "win")
+    losses = total_challenges - wins
+    total_bet = sum(g["bet_amount"] for g in challenges)
+    total_won = sum(g["won_amount"] for g in challenges if g["result"] == "win")
+    total_charity = sum(g["charity_amount"] for g in challenges)
     
-    win_rate = (wins / total_games * 100) if total_games > 0 else 0
+    win_rate = (wins / total_challenges * 100) if total_challenges > 0 else 0
     
     # Today's stats
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    today_games = await db.lucky_wallet_games.find(
+    today_challenges = await db.lucky_wallet_challenges.find(
         {"user_id": current_user.user_id, "date": today},
         {"_id": 0}
     ).to_list(100)
     
-    today_total = len(today_games)
-    today_wins = sum(1 for g in today_games if g["result"] == "win")
-    today_bet = sum(g["bet_amount"] for g in today_games)
-    today_won = sum(g["won_amount"] for g in today_games if g["result"] == "win")
-    today_charity = sum(g["charity_amount"] for g in today_games)
+    today_total = len(today_challenges)
+    today_wins = sum(1 for g in today_challenges if g["result"] == "win")
+    today_bet = sum(g["bet_amount"] for g in today_challenges)
+    today_won = sum(g["won_amount"] for g in today_challenges if g["result"] == "win")
+    today_charity = sum(g["charity_amount"] for g in today_challenges)
     
     return {
         "all_time": {
-            "total_games": total_games,
+            "total_challenges": total_challenges,
             "wins": wins,
             "losses": losses,
             "win_rate": round(win_rate, 2),
@@ -2763,7 +2763,7 @@ async def get_lucky_wallet_stats(current_user: User = Depends(get_current_user))
             "total_charity_contribution": total_charity
         },
         "today": {
-            "total_games": today_total,
+            "total_challenges": today_total,
             "wins": today_wins,
             "losses": today_total - today_wins,
             "total_bet": today_bet,
@@ -2903,7 +2903,7 @@ async def play_lucky_wallet(
         "created_at": datetime.now(timezone.utc)
     }
     
-    await db.lucky_wallet_games.insert_one(game_record)
+    await db.lucky_wallet_challenges.insert_one(game_record)
     
     # Record charity contribution
     await db.charity_contributions.insert_one({
@@ -2971,12 +2971,12 @@ async def get_lucky_wallet_history(
     current_user: User = Depends(get_current_user)
 ):
     """Get user's Charity Lucky Wallet game history"""
-    games = await db.lucky_wallet_games.find(
+    challenges = await db.lucky_wallet_challenges.find(
         {"user_id": current_user.user_id},
         {"_id": 0}
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
-    return {"games": games}
+    return {"challenges": challenges}
 
 @api_router.get("/lucky-wallet/leaderboard")
 async def get_lucky_wallet_leaderboard():
@@ -2988,26 +2988,26 @@ async def get_lucky_wallet_leaderboard():
         {"$group": {
             "_id": "$user_id",
             "total_won": {"$sum": "$won_amount"},
-            "games_won": {"$sum": 1}
+            "challenges_won": {"$sum": 1}
         }},
         {"$sort": {"total_won": -1}},
         {"$limit": 10}
     ]
     
-    top_winners = await db.lucky_wallet_games.aggregate(winner_pipeline).to_list(10)
+    top_winners = await db.lucky_wallet_challenges.aggregate(winner_pipeline).to_list(10)
     
     # Top charity contributors
     charity_pipeline = [
         {"$group": {
             "_id": "$user_id",
             "total_charity": {"$sum": "$charity_amount"},
-            "total_games": {"$sum": 1}
+            "total_challenges": {"$sum": 1}
         }},
         {"$sort": {"total_charity": -1}},
         {"$limit": 10}
     ]
     
-    top_contributors = await db.lucky_wallet_games.aggregate(charity_pipeline).to_list(10)
+    top_contributors = await db.lucky_wallet_challenges.aggregate(charity_pipeline).to_list(10)
     
     # Get user details
     winners_leaderboard = []
@@ -3021,7 +3021,7 @@ async def get_lucky_wallet_leaderboard():
                 "rank": i + 1,
                 "user": user,
                 "total_won": winner["total_won"],
-                "games_won": winner["games_won"]
+                "challenges_won": winner["challenges_won"]
             })
     
     contributors_leaderboard = []
@@ -3035,7 +3035,7 @@ async def get_lucky_wallet_leaderboard():
                 "rank": i + 1,
                 "user": user,
                 "total_charity": contributor["total_charity"],
-                "total_games": contributor["total_games"]
+                "total_challenges": contributor["total_challenges"]
             })
     
     return {
@@ -3553,7 +3553,7 @@ async def get_host_leaderboard():
 """
 EDUCATION PLATFORM FEATURES:
 1. Gamified Learning - Courses with rewards
-2. Mind Games - Cognitive skill enhancement games
+2. Mind Challenges - Cognitive skill enhancement challenges
 3. Quizzes & Challenges - Knowledge testing with rewards
 4. Learning Levels - Progress tracking (Seedling to Legend)
 5. Study Groups - Peer-to-peer learning
@@ -3575,16 +3575,16 @@ LEARNING_LEVELS = {
 # Course Categories
 COURSE_CATEGORIES = [
     "Mathematics", "Science", "English", "Computer Science", 
-    "Business", "Arts", "Languages", "Life Skills", "Mind Games"
+    "Business", "Arts", "Languages", "Life Skills", "Mind Challenges"
 ]
 
-# Mind Games Configuration
+# Mind Challenges Configuration
 MIND_GAMES = [
     {
         "game_id": "memory_match",
         "name": "Memory Match",
         "description": "Match pairs to improve memory",
-        "category": "Mind Games",
+        "category": "Mind Challenges",
         "difficulty": "easy",
         "coins_reward": 50,
         "time_limit_seconds": 120
@@ -3593,7 +3593,7 @@ MIND_GAMES = [
         "game_id": "math_puzzle",
         "name": "Math Puzzle",
         "description": "Solve math problems quickly",
-        "category": "Mind Games",
+        "category": "Mind Challenges",
         "difficulty": "medium",
         "coins_reward": 100,
         "time_limit_seconds": 60
@@ -3602,7 +3602,7 @@ MIND_GAMES = [
         "game_id": "word_scramble",
         "name": "Word Scramble",
         "description": "Unscramble words to build vocabulary",
-        "category": "Mind Games",
+        "category": "Mind Challenges",
         "difficulty": "easy",
         "coins_reward": 50,
         "time_limit_seconds": 90
@@ -3611,7 +3611,7 @@ MIND_GAMES = [
         "game_id": "logic_puzzle",
         "name": "Logic Puzzle",
         "description": "Solve logical reasoning challenges",
-        "category": "Mind Games",
+        "category": "Mind Challenges",
         "difficulty": "hard",
         "coins_reward": 200,
         "time_limit_seconds": 180
@@ -3620,7 +3620,7 @@ MIND_GAMES = [
         "game_id": "pattern_recognition",
         "name": "Pattern Recognition",
         "description": "Identify patterns and sequences",
-        "category": "Mind Games",
+        "category": "Mind Challenges",
         "difficulty": "medium",
         "coins_reward": 100,
         "time_limit_seconds": 120
@@ -3642,7 +3642,7 @@ async def get_education_config():
     return {
         "learning_levels": LEARNING_LEVELS,
         "categories": COURSE_CATEGORIES,
-        "mind_games": MIND_GAMES,
+        "mind_challenges": MIND_GAMES,
         "config": EDUCATION_CONFIG
     }
 
@@ -3662,7 +3662,7 @@ async def get_education_profile(current_user: User = Depends(get_current_user)):
             "total_learning_hours": 0,
             "courses_completed": 0,
             "quizzes_completed": 0,
-            "games_played": 0,
+            "challenges_played": 0,
             "total_coins_earned": 0,
             "daily_streak": 0,
             "last_learning_date": None,
@@ -3790,7 +3790,7 @@ async def get_courses(
             "course_id": "mind_training",
             "title": "Mind Training & Focus",
             "description": "Enhance cognitive abilities",
-            "category": "Mind Games",
+            "category": "Mind Challenges",
             "difficulty": "all",
             "duration_hours": 5,
             "lessons_count": 10,
@@ -3978,11 +3978,11 @@ async def complete_lesson(
         "is_course_completed": new_progress >= 100
     }
 
-# Mind Games
-@api_router.get("/education/mind-games")
-async def get_mind_games():
-    """Get available mind games"""
-    return {"games": MIND_GAMES}
+# Mind Challenges
+@api_router.get("/education/mind-challenges")
+async def get_mind_challenges():
+    """Get available mind challenges"""
+    return {"challenges": MIND_GAMES}
 
 class PlayMindGameRequest(BaseModel):
     game_id: str
@@ -4037,7 +4037,7 @@ async def play_mind_game(
     await db.education_profiles.update_one(
         {"user_id": current_user.user_id},
         {
-            "$inc": {"games_played": 1, "total_coins_earned": earned_reward},
+            "$inc": {"challenges_played": 1, "total_coins_earned": earned_reward},
             "$set": {"updated_at": datetime.now(timezone.utc)}
         },
         upsert=True
@@ -10313,7 +10313,7 @@ async def get_university():
         "features": [
             {"icon": "🌍", "name": "Global Teachers", "desc": "Dunya ke top educators"},
             {"icon": "👤", "name": "3D Avatar", "desc": "Virtual classroom mein baitho"},
-            {"icon": "🎮", "name": "Interactive Learning", "desc": "Games aur activities"},
+            {"icon": "🎮", "name": "Interactive Learning", "desc": "Challenges aur activities"},
             {"icon": "📜", "name": "Certificates", "desc": "Verified credentials"}
         ],
         
@@ -10838,37 +10838,37 @@ async def get_big_bang_checklist():
         "message": "Sultan bhai, sab kuch taiyar hai. Kal history banegi! 💚👑"
     }
 
-# ==================== 👑 GYAN SULTANAT GAMES ====================
-# Dunya ka No. 1 Gaming Model - Khelo, Kamao, Madad Karo
+# ==================== 👑 GYAN SKILL ARENA ====================
+# Dunya ka No. 1 Skill Challenge Model - Khelo, Kamao, Madad Karo
 
 SULTANAT_GAMES = {
-    "ludo": {"name": "Sultanat Ludo", "icon": "🎲", "players": "2-4", "entry": "10 Stars", "prize_pool": "80%"},
-    "cricket": {"name": "Gyan Cricket", "icon": "🏏", "players": "1v1", "entry": "20 Stars", "prize_pool": "80%"},
-    "chess": {"name": "Sultan Chess", "icon": "♟️", "players": "2", "entry": "15 Stars", "prize_pool": "80%"},
-    "carrom": {"name": "Royal Carrom", "icon": "🎯", "players": "2-4", "entry": "10 Stars", "prize_pool": "80%"},
-    "quiz": {"name": "Gyan Quiz Battle", "icon": "🧠", "players": "2-100", "entry": "5 Stars", "prize_pool": "85%"},
+    "ludo": {"name": "Sultanat Ludo", "icon": "🎲", "players": "2-4", "entry": "10 Stars", "prize_pool": "45%"},
+    "cricket": {"name": "Gyan Cricket", "icon": "🏏", "players": "1v1", "entry": "20 Stars", "prize_pool": "45%"},
+    "chess": {"name": "Sultan Chess", "icon": "♟️", "players": "2", "entry": "15 Stars", "prize_pool": "45%"},
+    "carrom": {"name": "Royal Carrom", "icon": "🎯", "players": "2-4", "entry": "10 Stars", "prize_pool": "45%"},
+    "quiz": {"name": "Gyan Quiz Battle", "icon": "🧠", "players": "2-100", "entry": "5 Stars", "prize_pool": "45%"},
     "puzzle": {"name": "Mind Puzzle", "icon": "🧩", "players": "1", "entry": "Free", "prize_pool": "Bonus"},
-    "battle_royale": {"name": "Sultanat Royale", "icon": "⚔️", "players": "100", "entry": "50 Stars", "prize_pool": "75%"},
-    "racing": {"name": "Sultan Racing", "icon": "🏎️", "players": "1-8", "entry": "25 Stars", "prize_pool": "80%"}
+    "battle_royale": {"name": "Sultanat Royale", "icon": "⚔️", "players": "100", "entry": "50 Stars", "prize_pool": "45%"},
+    "racing": {"name": "Sultan Racing", "icon": "🏎️", "players": "1-8", "entry": "25 Stars", "prize_pool": "45%"}
 }
 
-@api_router.get("/games/sultanat")
-async def get_sultanat_games():
+@api_router.get("/challenges/sultanat")
+async def get_sultanat_challenges():
     """
-    👑 GYAN SULTANAT GAMES
-    Khelo, Kamao, Madad Karo - Dunya ka No.1 Gaming Model
+    👑 GYAN SKILL ARENA
+    Khelo, Kamao, Madad Karo - Dunya ka No.1 Skill Challenge Model
     """
     return {
         "success": True,
-        "title": "👑 GYAN SULTANAT GAMES",
+        "title": "👑 GYAN SKILL ARENA",
         "subtitle": "Khelo, Kamao, Duniya Badlo",
         "tagline": "Har Jeet Se Cancer Patient Ki Madad",
         
-        "games": SULTANAT_GAMES,
-        "total_games": len(SULTANAT_GAMES),
+        "challenges": SULTANAT_GAMES,
+        "total_challenges": len(SULTANAT_GAMES),
         
         "income_logic": {
-            "winner_share": "70%",
+            "winner_share": "45%",
             "charity_share": "10% (Cancer/Orphan Fund)",
             "platform_share": "15%",
             "vip_room_upgrade": "5%",
@@ -10887,19 +10887,19 @@ async def get_sultanat_games():
             {"icon": "💰", "name": "Real Earnings", "desc": "Jeeto aur withdraw karo"},
             {"icon": "💚", "name": "Auto Charity", "desc": "10% har game se charity"},
             {"icon": "🏆", "name": "Leaderboard", "desc": "Sultan Rankings"},
-            {"icon": "🎮", "name": "3D Interface", "desc": "Virtual gaming world"},
-            {"icon": "👑", "name": "VIP Rooms", "desc": "Exclusive gaming zones"}
+            {"icon": "🎮", "name": "3D Interface", "desc": "Virtual skill challenge world"},
+            {"icon": "👑", "name": "VIP Rooms", "desc": "Exclusive skill challenge zones"}
         ],
         
-        "vs_other_games": {
-            "other_games": "Sirf timepass, paisa waste",
-            "sultanat_games": "Entertainment + Earning + Charity",
+        "vs_other_challenges": {
+            "other_challenges": "Sirf timepass, paisa waste",
+            "sultanat_challenges": "Entertainment + Earning + Charity",
             "other_charity": "0%",
             "sultanat_charity": "10% of every game"
         }
     }
 
-@api_router.get("/games/{game_id}")
+@api_router.get("/challenges/{game_id}")
 async def get_game_details(game_id: str):
     """Get specific game details"""
     if game_id not in SULTANAT_GAMES:
@@ -10913,7 +10913,7 @@ async def get_game_details(game_id: str):
         "charity_impact": "10% of entry goes to Cancer/Orphan Fund"
     }
 
-@api_router.post("/games/join")
+@api_router.post("/challenges/join")
 async def join_game(request: Request):
     """Join a Sultanat Game"""
     data = await request.json()
@@ -11019,7 +11019,7 @@ async def start_live_stream(request: Request):
 async def get_education_mastermind():
     """
     🎓 Education Mastermind
-    Learning = Gaming = Earning
+    Learning = Skill Challenge = Earning
     """
     return {
         "success": True,
@@ -11094,7 +11094,7 @@ async def get_vip_smart_rooms():
             {
                 "level": 2,
                 "name": "🥈 Silver Palace",
-                "features": ["Enhanced dashboard", "Priority support", "Private games"],
+                "features": ["Enhanced dashboard", "Priority support", "Private challenges"],
                 "unlock": "5,000 Stars",
                 "commission": "14%"
             },
@@ -11122,7 +11122,7 @@ async def get_vip_smart_rooms():
         ],
         
         "room_features": {
-            "gaming_control": "Manage your tournaments",
+            "skill challenge_control": "Manage your tournaments",
             "streaming_studio": "Professional live setup",
             "analytics": "Real-time earnings dashboard",
             "team_management": "Build your empire",
@@ -11142,12 +11142,12 @@ async def get_master_strike_v10():
         "success": True,
         "version": "V10.0",
         "title": "👑 GLOBAL MASTER-STRIKE COMMAND",
-        "subtitle": "Gaming + Streaming + Education = Sovereign Loop",
+        "subtitle": "Skill Challenge + Streaming + Education = Sovereign Loop",
         "status": "FINAL & READY TO INJECT",
         
         "sovereign_business_loop": {
-            "gaming": {
-                "model": "Gyan Sultanat Games",
+            "skill challenge": {
+                "model": "Gyan Skill Arena",
                 "income": "70% winner, 10% charity, 20% platform",
                 "psychology": "Pride, not addiction",
                 "status": "✅ LOCKED"
@@ -11177,7 +11177,7 @@ async def get_master_strike_v10():
         },
         
         "global_dominance_calculation": {
-            "gaming_users": "2 Billion target",
+            "skill challenge_users": "2 Billion target",
             "streaming_users": "1.5 Billion target",
             "education_users": "1 Billion target",
             "total_target": "4.5 Billion users",
@@ -11185,7 +11185,7 @@ async def get_master_strike_v10():
         },
         
         "vs_competition": {
-            "gaming": {
+            "skill challenge": {
                 "others": "Sirf timepass",
                 "sultanat": "Khelo, Kamao, Madad Karo"
             },
@@ -11232,10 +11232,10 @@ async def get_api_directory():
                 "/api/master-strike/v10",
                 "/api/app-directory"
             ],
-            "gaming": [
-                "/api/games/sultanat",
-                "/api/games/{game_id}",
-                "/api/games/join"
+            "skill challenge": [
+                "/api/challenges/sultanat",
+                "/api/challenges/{game_id}",
+                "/api/challenges/join"
             ],
             "entertainment": [
                 "/api/entertainment/live-streaming",
