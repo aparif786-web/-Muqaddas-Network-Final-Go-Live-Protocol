@@ -280,7 +280,7 @@ class TalentProfile(BaseModel):
     created_at: datetime
     verified_at: Optional[datetime] = None
 
-class AIServiceSubscription(BaseModel):
+class GyanServiceSubscription(BaseModel):
     subscription_id: str
     talent_id: str
     plan_type: str  # "basic", "pro", "enterprise"
@@ -468,7 +468,7 @@ VALUE_PROPOSITIONS = {
 }
 
 # Gyan Service Plans
-AI_SERVICE_PLANS = {
+GYAN_SERVICE_PLANS = {
     "basic": {
         "name": "Basic Gyan",
         "price": 99,  # ₹99/month
@@ -5943,7 +5943,7 @@ async def get_ai_service_plans():
                 "price_per_month": data["price"],
                 "features": data["features"]
             }
-            for plan_type, data in AI_SERVICE_PLANS.items()
+            for plan_type, data in GYAN_SERVICE_PLANS.items()
         ],
         "message": "Enhance your services with Gyan assistance!"
     }
@@ -5953,7 +5953,7 @@ async def subscribe_to_ai_service(plan_type: str, user: User = Depends(get_curre
     """Subscribe to Gyan service plan"""
     user_id = user.user_id
     
-    if plan_type not in AI_SERVICE_PLANS:
+    if plan_type not in GYAN_SERVICE_PLANS:
         raise HTTPException(status_code=400, detail="Invalid plan type")
     
     # Check if user is a talent
@@ -5961,7 +5961,7 @@ async def subscribe_to_ai_service(plan_type: str, user: User = Depends(get_curre
     if not talent:
         raise HTTPException(status_code=400, detail="Must be a registered talent to subscribe")
     
-    plan = AI_SERVICE_PLANS[plan_type]
+    plan = GYAN_SERVICE_PLANS[plan_type]
     
     # Check wallet balance
     wallet = await db.wallets.find_one({"user_id": user_id})
@@ -10157,7 +10157,7 @@ async def get_purity_shield():
             },
             {
                 "layer": 2,
-                "name": "Scam Detection AI",
+                "name": "Scam Detection Gyan",
                 "desc": "Fraud aur dhoka automatic detect",
                 "status": "active"
             },
@@ -11376,7 +11376,7 @@ async def get_relationship_harmony():
                 "name": "Family Counseling",
                 "icon": "👨‍👩‍👧‍👦",
                 "desc": "Family issues ka solution",
-                "method": "Professional guidance AI"
+                "method": "Professional Gyan guidance"
             },
             {
                 "name": "Anger Management",
