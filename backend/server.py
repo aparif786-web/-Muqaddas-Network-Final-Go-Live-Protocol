@@ -304,7 +304,7 @@ class TalentAdvertisement(BaseModel):
     created_at: datetime
     expires_at: datetime
 
-# ==================== AI TEACHER SYSTEM ====================
+# ==================== Gyan TEACHER SYSTEM ====================
 
 class GyanMindSubject(str, Enum):
     MATHEMATICS = "mathematics"
@@ -346,7 +346,7 @@ class EducationalAd(BaseModel):
     ad_id: str
     company_name: str
     company_description: str
-    educational_content: str  # How AI explains this company
+    educational_content: str  # How Gyan explains this company
     target_subjects: List[str]
     trust_score: float = 0.0
     user_reviews: int = 0
@@ -482,7 +482,7 @@ AI_SERVICE_PLANS = {
     "enterprise": {
         "name": "Enterprise Gyan",
         "price": 999,  # ₹999/month
-        "features": ["Full AI Suite", "Custom AI Training", "24/7 Support", "API Access", "White Label"]
+        "features": ["Full Gyan Suite", "Custom Gyan Training", "24/7 Support", "API Access", "White Label"]
     }
 }
 
@@ -5930,11 +5930,11 @@ async def browse_talents(
         "total": len(result)
     }
 
-# ==================== AI SERVICES APIs ====================
+# ==================== Gyan SERVICES APIs ====================
 
 @api_router.get("/ai-services/plans")
 async def get_ai_service_plans():
-    """Get available AI service plans"""
+    """Get available Gyan service plans"""
     return {
         "plans": [
             {
@@ -5945,12 +5945,12 @@ async def get_ai_service_plans():
             }
             for plan_type, data in AI_SERVICE_PLANS.items()
         ],
-        "message": "Enhance your services with AI assistance!"
+        "message": "Enhance your services with Gyan assistance!"
     }
 
 @api_router.post("/ai-services/subscribe/{plan_type}")
 async def subscribe_to_ai_service(plan_type: str, user: User = Depends(get_current_user)):
-    """Subscribe to AI service plan"""
+    """Subscribe to Gyan service plan"""
     user_id = user.user_id
     
     if plan_type not in AI_SERVICE_PLANS:
@@ -6090,7 +6090,7 @@ async def get_my_ads(user: User = Depends(get_current_user)):
         "total": len(ads)
     }
 
-# ==================== AI TEACHER APIs ====================
+# ==================== Gyan TEACHER APIs ====================
 
 @api_router.get("/ai-teacher/subjects")
 async def get_ai_teacher_subjects():
@@ -6153,7 +6153,7 @@ async def ask_ai_teacher(
             "daily_limit": daily_limit
         }
     
-    # Generate AI response using REAL LLM
+    # Generate Gyan response using REAL LLM
     query_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     
@@ -6963,7 +6963,7 @@ async def generate_signed_pdf(user_id: str, document_type: str = "terms_conditio
     # Footer with royal styling
     p.setFillColorRGB(0.85, 0.65, 0.13)  # Gold
     p.setFont("Helvetica-Bold", 10)
-    p.drawCentredString(width/2, 50, "🏛️ Muqaddas Technology - Powered by AI 🏛️")
+    p.drawCentredString(width/2, 50, "🏛️ Muqaddas Technology - Powered by Gyan 🏛️")
     p.setFillColorRGB(0, 0, 0)
     p.setFont("Helvetica", 9)
     p.drawCentredString(width/2, 35, f"Document Generated: {now.isoformat()}")
@@ -8211,7 +8211,7 @@ async def get_privacy_policy():
     """
     Privacy Policy - Muqaddas Technology
     Powered by Aayushka Design Bazaar
-    No AI terminology - Gyan Mind Trigger only
+    No Gyan terminology - Gyan Mind Trigger only
     """
     return {
         "success": True,
@@ -9767,7 +9767,7 @@ async def get_master_agents():
             "console": "Master Console via Sultan-Pulse"
         },
         "version": "1.0 (Framework Ready)",
-        "next_update": "v1.1 - AI Avatars & Voice Profiles"
+        "next_update": "v1.1 - Gyan Avatars & Voice Profiles"
     }
 
 @api_router.get("/master-agents/{agent_id}")
@@ -9990,7 +9990,7 @@ async def get_app_version():
         ],
         
         "coming_in_v1_1": [
-            "🤖 AI Avatars for Master Agents",
+            "🤖 Gyan Avatars for Master Agents",
             "🎤 Voice Profiles (Sultan-Standard)",
             "🗺️ Global User World Map",
             "🎥 Live Classrooms",
@@ -9998,7 +9998,7 @@ async def get_app_version():
         ],
         
         "roadmap": {
-            "v1.1": "February 2026 - AI Agents & Live Features",
+            "v1.1": "February 2026 - Gyan Agents & Live Features",
             "v1.2": "March 2026 - VR Education Module",
             "v2.0": "June 2026 - Global Expansion"
         },
@@ -10134,12 +10134,12 @@ async def get_3d_stores():
         ]
     }
 
-# ==================== INFINITE PURITY AI GUARD ====================
+# ==================== INFINITE PURITY Gyan GUARD ====================
 
 @api_router.get("/purity-shield")
 async def get_purity_shield():
     """
-    🛡️ Infinite Purity AI Guard
+    🛡️ Infinite Purity Gyan Guard
     Scam Detection + Auto-Ban + Charity Penalty
     """
     return {
@@ -10204,7 +10204,7 @@ async def report_content(request: Request):
     data = await request.json()
     return {
         "success": True,
-        "message": "🛡️ Report submitted! AI reviewing...",
+        "message": "🛡️ Report submitted! Gyan reviewing...",
         "report_id": f"RPT-{uuid.uuid4().hex[:8].upper()}",
         "status": "under_review",
         "action_time": "Within 24 hours"
@@ -11309,14 +11309,14 @@ async def get_b2b_legal_bridge():
         "integration_logic": {
             "step_1": "Company registers on Gyan Sultanat",
             "step_2": "Business injected into 3D Virtual Market",
-            "step_3": "AI matches users with right services",
+            "step_3": "Gyan Mind matches users with right services",
             "step_4": "Personalized guidance based on budget & family",
             "step_5": "User's Gyan Mission Target achieved"
         },
         
         "psychology_target": {
             "not_just_ads": "Smart Recommendations",
-            "understanding": "AI samjhega user ki zaroorat",
+            "understanding": "Gyan Mind samjhega user ki zaroorat",
             "guidance": "Budget aur family ke hisab se guide",
             "goal": "User ka mission complete karna"
         },
@@ -11364,7 +11364,7 @@ async def get_relationship_harmony():
                 "name": "Relationship Analysis",
                 "icon": "💑",
                 "desc": "Dono parties ki psychology analyze",
-                "method": "AI-based emotional intelligence"
+                "method": "Gyan-powered emotional intelligence"
             },
             {
                 "name": "Peace Protocol",
@@ -11388,7 +11388,7 @@ async def get_relationship_harmony():
         
         "psychology_engine": {
             "input": "User shares their problem",
-            "analysis": "AI analyzes both perspectives",
+            "analysis": "Gyan Mind analyzes both perspectives",
             "output": "Neutral, balanced advice",
             "goal": "Galti aur gusse ko khatam karna"
         },
@@ -11545,7 +11545,7 @@ async def get_prediction_engine():
         ],
         
         "how_it_works": {
-            "data_analysis": "AI analyzes your patterns",
+            "data_analysis": "Gyan Mind analyzes your patterns",
             "pattern_match": "Compares with millions of cases",
             "early_warning": "Alerts before problem occurs",
             "solution": "Provides preventive action"
@@ -11940,7 +11940,7 @@ async def get_success_protocol():
             "client_target": "B2B Bridge se connect",
             "revenue_target": "Gap Commission se maximize",
             "scale_target": "3D Market se expand",
-            "automation_target": "AI tools se simplify"
+            "automation_target": "Gyan tools se simplify"
         },
         
         "mechanism": {
