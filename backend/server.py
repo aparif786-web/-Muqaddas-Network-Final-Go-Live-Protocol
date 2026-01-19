@@ -5932,7 +5932,7 @@ async def browse_talents(
 
 # ==================== Gyan SERVICES APIs ====================
 
-@api_router.get("/ai-services/plans")
+@api_router.get("/gyan-services/plans")
 async def get_ai_service_plans():
     """Get available Gyan service plans"""
     return {
@@ -5948,7 +5948,7 @@ async def get_ai_service_plans():
         "message": "Enhance your services with Gyan assistance!"
     }
 
-@api_router.post("/ai-services/subscribe/{plan_type}")
+@api_router.post("/gyan-services/subscribe/{plan_type}")
 async def subscribe_to_ai_service(plan_type: str, user: User = Depends(get_current_user)):
     """Subscribe to Gyan service plan"""
     user_id = user.user_id
@@ -6092,8 +6092,8 @@ async def get_my_ads(user: User = Depends(get_current_user)):
 
 # ==================== Gyan TEACHER APIs ====================
 
-@api_router.get("/ai-teacher/subjects")
-async def get_ai_teacher_subjects():
+@api_router.get("/gyan-guru/subjects")
+async def get_gyan_guru_subjects():
     """Get all subjects Gyan Mind Trigger can help with"""
     subjects = [
         {"subject": "mathematics", "name": "गणित (Mathematics)", "icon": "🔢"},
@@ -6121,8 +6121,8 @@ class GyanMindQuestionRequest(BaseModel):
     question: str
     language: str = "Hindi"
 
-@api_router.post("/ai-teacher/ask")
-async def ask_ai_teacher(
+@api_router.post("/gyan-guru/ask")
+async def ask_gyan_guru(
     request: GyanMindQuestionRequest,
     user: User = Depends(get_current_user)
 ):
@@ -6131,7 +6131,7 @@ async def ask_ai_teacher(
     
     # Check daily question limit
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    today_questions = await db.ai_teacher_queries.count_documents({
+    today_questions = await db.gyan_guru_queries.count_documents({
         "user_id": user_id,
         "created_at": {"$gte": today_start}
     })
@@ -6158,10 +6158,10 @@ async def ask_ai_teacher(
     now = datetime.now(timezone.utc)
     
     # Use async LLM response
-    ai_response = await generate_ai_teacher_response_llm(request.subject, request.question, request.language)
+    ai_response = await generate_gyan_guru_response_llm(request.subject, request.question, request.language)
     
     # Save query
-    await db.ai_teacher_queries.insert_one({
+    await db.gyan_guru_queries.insert_one({
         "query_id": query_id,
         "user_id": user_id,
         "subject": request.subject,
@@ -6187,7 +6187,7 @@ async def ask_ai_teacher(
         "trust_features": GYAN_MIND_CONFIG["trust_building_features"]
     }
 
-async def generate_ai_teacher_response_llm(subject: str, question: str, language: str) -> dict:
+async def generate_gyan_guru_response_llm(subject: str, question: str, language: str) -> dict:
     """Generate Gyan Mind Trigger response using real LLM (Emergent API) - MULTILINGUAL SUPPORT"""
     
     # Subject-specific system prompts
@@ -6325,7 +6325,7 @@ Guidelines:
             "sources": ["Gyan Sultanat"]
         }
 
-def generate_ai_teacher_response(subject: str, question: str, language: str) -> dict:
+def generate_gyan_guru_response(subject: str, question: str, language: str) -> dict:
     """Sync wrapper - will be called from async context"""
     # This is kept for backward compatibility
     import asyncio
@@ -6334,7 +6334,7 @@ def generate_ai_teacher_response(subject: str, question: str, language: str) -> 
         if loop.is_running():
             # We're in an async context, need to use await in the caller
             return None  # Signal to use async version
-        return asyncio.run(generate_ai_teacher_response_llm(subject, question, language))
+        return asyncio.run(generate_gyan_guru_response_llm(subject, question, language))
     except:
         return {
             "answer": f"Aapka sawaal '{question}' ke baare mein - Main aapko detail mein samjhata hoon.",
@@ -6342,20 +6342,20 @@ def generate_ai_teacher_response(subject: str, question: str, language: str) -> 
             "sources": ["Gyan Sultanat Knowledge Base"]
         }
 
-@api_router.post("/ai-teacher/feedback/{query_id}")
-async def give_ai_teacher_feedback(
+@api_router.post("/gyan-guru/feedback/{query_id}")
+async def give_gyan_guru_feedback(
     query_id: str,
     helpful: bool,
     user: User = Depends(get_current_user)
 ):
     """Give feedback on Gyan Mind Trigger's answer"""
-    query = await db.ai_teacher_queries.find_one({"query_id": query_id})
+    query = await db.gyan_guru_queries.find_one({"query_id": query_id})
     if not query:
         raise HTTPException(status_code=404, detail="Query not found")
     
     # Update helpful votes
     update_value = 1 if helpful else -1
-    await db.ai_teacher_queries.update_one(
+    await db.gyan_guru_queries.update_one(
         {"query_id": query_id},
         {"$inc": {"helpful_votes": update_value}}
     )
@@ -6365,15 +6365,15 @@ async def give_ai_teacher_feedback(
         "message": "Thank you for your feedback! It helps Gyan Mind Trigger improve."
     }
 
-@api_router.get("/ai-teacher/history")
-async def get_ai_teacher_history(
+@api_router.get("/gyan-guru/history")
+async def get_gyan_guru_history(
     limit: int = 20,
     user: User = Depends(get_current_user)
 ):
     """Get user's Gyan Mind Trigger conversation history"""
     user_id = user.user_id
     
-    queries = await db.ai_teacher_queries.find(
+    queries = await db.gyan_guru_queries.find(
         {"user_id": user_id}
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
@@ -10764,7 +10764,7 @@ async def get_20_billion_roadmap():
         
         "automation_features": {
             "self_coding_engine": "Apps khud code hongi",
-            "ai_teachers": "24/7 teaching bots",
+            "gyan_gurus": "24/7 teaching bots",
             "auto_charity": "No manual intervention needed",
             "sovereign_economy": "Self-sustaining Star-Coin"
         },
