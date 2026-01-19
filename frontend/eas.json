@@ -10,19 +10,20 @@
         "buildType": "apk",
         "credentialsSource": "remote"
       },
-      "autoIncrement": false,
       "withoutCredentials": true
     },
     "production": {
       "android": {
         "buildType": "app-bundle",
         "credentialsSource": "remote"
-      }
+      },
+      "withoutCredentials": true
     },
     "playstore": {
       "distribution": "store",
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "credentialsSource": "remote"
       },
       "withoutCredentials": true
     }
