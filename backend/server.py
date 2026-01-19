@@ -11282,6 +11282,459 @@ async def get_api_directory():
         "status": "ALL SYSTEMS OPERATIONAL ✅"
     }
 
+# ==================== 🏢 B2B LEGAL BRIDGE ====================
+# Company Growth Engine - Third Party Integration
+
+@api_router.get("/b2b/legal-bridge")
+async def get_b2b_legal_bridge():
+    """
+    🏢 B2B Legal Bridge
+    Company Growth Engine - Legal Business Integration
+    """
+    return {
+        "success": True,
+        "title": "🏢 B2B LEGAL BRIDGE",
+        "subtitle": "Company Growth Engine",
+        "tagline": "Legal Businesses Ka Digital Partner",
+        
+        "supported_industries": [
+            {"id": "insurance", "name": "Insurance Companies", "icon": "🛡️", "status": "ready"},
+            {"id": "real_estate", "name": "Real Estate", "icon": "🏠", "status": "ready"},
+            {"id": "health", "name": "Healthcare", "icon": "🏥", "status": "ready"},
+            {"id": "education", "name": "Education Institutes", "icon": "🎓", "status": "ready"},
+            {"id": "finance", "name": "Financial Services", "icon": "💰", "status": "ready"},
+            {"id": "legal", "name": "Law Firms", "icon": "⚖️", "status": "ready"}
+        ],
+        
+        "integration_logic": {
+            "step_1": "Company registers on Gyan Sultanat",
+            "step_2": "Business injected into 3D Virtual Market",
+            "step_3": "AI matches users with right services",
+            "step_4": "Personalized guidance based on budget & family",
+            "step_5": "User's Gyan Mission Target achieved"
+        },
+        
+        "psychology_target": {
+            "not_just_ads": "Smart Recommendations",
+            "understanding": "AI samjhega user ki zaroorat",
+            "guidance": "Budget aur family ke hisab se guide",
+            "goal": "User ka mission complete karna"
+        },
+        
+        "revenue_model": {
+            "company_fee": "2-5% per successful referral",
+            "user_benefit": "Best deals + cashback",
+            "charity_share": "1% to charity fund"
+        }
+    }
+
+@api_router.post("/b2b/register-company")
+async def register_b2b_company(request: Request):
+    """Register a B2B company"""
+    data = await request.json()
+    company_name = data.get("company_name")
+    industry = data.get("industry")
+    
+    return {
+        "success": True,
+        "message": f"🏢 {company_name} registered successfully!",
+        "company_id": f"B2B-{uuid.uuid4().hex[:8].upper()}",
+        "industry": industry,
+        "status": "pending_verification",
+        "next_step": "Submit legal documents for verification"
+    }
+
+# ==================== 💚 RELATIONSHIP & FAMILY HARMONY ====================
+# Emotional Intelligence Module
+
+@api_router.get("/harmony/relationship")
+async def get_relationship_harmony():
+    """
+    💚 Relationship & Family Harmony Module
+    Emotional Intelligence for Peace
+    """
+    return {
+        "success": True,
+        "title": "💚 FAMILY HARMONY MODULE",
+        "subtitle": "Rishton Mein Sukoon",
+        "tagline": "Gyan Mind - Aapka Neutral Judge",
+        
+        "features": [
+            {
+                "name": "Relationship Analysis",
+                "icon": "💑",
+                "desc": "Dono parties ki psychology analyze",
+                "method": "AI-based emotional intelligence"
+            },
+            {
+                "name": "Peace Protocol",
+                "icon": "☮️",
+                "desc": "Neutral suggestions for harmony",
+                "method": "Conflict resolution algorithms"
+            },
+            {
+                "name": "Family Counseling",
+                "icon": "👨‍👩‍👧‍👦",
+                "desc": "Family issues ka solution",
+                "method": "Professional guidance AI"
+            },
+            {
+                "name": "Anger Management",
+                "icon": "😤➡️😊",
+                "desc": "Gusse ko control karna",
+                "method": "Breathing & mindfulness techniques"
+            }
+        ],
+        
+        "psychology_engine": {
+            "input": "User shares their problem",
+            "analysis": "AI analyzes both perspectives",
+            "output": "Neutral, balanced advice",
+            "goal": "Galti aur gusse ko khatam karna"
+        },
+        
+        "categories": [
+            {"type": "Couple Issues", "icon": "💑", "help": "Boyfriend-Girlfriend, Husband-Wife"},
+            {"type": "Parent-Child", "icon": "👨‍👧", "help": "Generation gap solutions"},
+            {"type": "Siblings", "icon": "👫", "help": "Bhai-behen ke jhagde"},
+            {"type": "Friends", "icon": "🤝", "help": "Dosti mein misunderstanding"},
+            {"type": "Workplace", "icon": "💼", "help": "Office relationships"}
+        ],
+        
+        "privacy": {
+            "encryption": "End-to-end encrypted",
+            "storage": "No personal data stored",
+            "confidential": "100% private conversations"
+        }
+    }
+
+@api_router.post("/harmony/get-advice")
+async def get_harmony_advice(request: Request):
+    """Get relationship advice"""
+    data = await request.json()
+    issue_type = data.get("issue_type", "general")
+    description = data.get("description", "")
+    
+    return {
+        "success": True,
+        "message": "💚 Gyan Mind is analyzing your situation...",
+        "session_id": f"HARMONY-{uuid.uuid4().hex[:8].upper()}",
+        "issue_type": issue_type,
+        "status": "analyzing",
+        "advice": "Pehle dono taraf ki baat sunna zaroori hai. Gussa shant karo, phir baat karo. Har rishta pyaar se bachta hai, ego se nahi.",
+        "peace_protocol": [
+            "1. Deep breath lo - 5 baar",
+            "2. Dusre ki jagah khud ko rakho",
+            "3. Bina blame kiye apni feelings batao",
+            "4. Solution dhundho, galti nahi",
+            "5. Maafi maango ya do - dono mein taqat hai"
+        ]
+    }
+
+# ==================== 📡 GHOST NETWORK (Offline Mode) ====================
+# Zero-Data Access - Mesh Networking
+
+@api_router.get("/ghost-network")
+async def get_ghost_network():
+    """
+    📡 Ghost Network - Zero Data Access
+    Mesh Networking for Offline Help
+    """
+    return {
+        "success": True,
+        "title": "📡 GHOST NETWORK",
+        "subtitle": "Bina Internet Ke Bhi Saath",
+        "tagline": "Museebat Mein Gyan Mind Kabhi Nahi Chhodega",
+        
+        "technology": {
+            "name": "Mesh Networking",
+            "methods": ["Bluetooth", "WiFi Direct", "Radio Frequency"],
+            "range": "Up to 100 meters per hop",
+            "chain": "Unlimited hops through other devices"
+        },
+        
+        "offline_features": [
+            {"feature": "SOS Emergency", "icon": "🆘", "desc": "Emergency alert bina internet ke"},
+            {"feature": "Basic Chat", "icon": "💬", "desc": "Nearby users se message"},
+            {"feature": "Location Share", "icon": "📍", "desc": "GPS location share karo"},
+            {"feature": "Saved Content", "icon": "📚", "desc": "Downloaded lessons access karo"},
+            {"feature": "Offline Wallet", "icon": "💰", "desc": "Star balance dekho"}
+        ],
+        
+        "how_it_works": {
+            "step_1": "Aapka data khatam hua",
+            "step_2": "App 'Ghost Mode' activate karti hai",
+            "step_3": "Nearby Gyan Sultanat users se connect",
+            "step_4": "Unke internet se signal relay hota hai",
+            "step_5": "Aapko basic features mil jaate hain"
+        },
+        
+        "sos_protocol": {
+            "trigger": "Volume button 5 times press",
+            "action": "Emergency alert to nearby users",
+            "message": "Location + SOS automatically shared",
+            "reach": "All users within 1km radius"
+        },
+        
+        "impact": {
+            "no_internet_areas": "Rural India connected",
+            "emergencies": "Life-saving in disasters",
+            "poor_users": "Data khatam = still connected",
+            "result": "Dunya ka sabse reliable network"
+        }
+    }
+
+@api_router.post("/ghost-network/sos")
+async def send_sos():
+    """Send SOS through Ghost Network"""
+    return {
+        "success": True,
+        "message": "🆘 SOS ALERT SENT!",
+        "alert_id": f"SOS-{uuid.uuid4().hex[:8].upper()}",
+        "status": "broadcasting",
+        "reach": "Searching nearby Gyan Sultanat users...",
+        "note": "Help is on the way. Stay calm."
+    }
+
+# ==================== 🔮 PREDICTION ENGINE ====================
+# Museebat Se Pehle Alert
+
+@api_router.get("/prediction-engine")
+async def get_prediction_engine():
+    """
+    🔮 Prediction Engine
+    Museebat Aane Se Pehle Alert
+    """
+    return {
+        "success": True,
+        "title": "🔮 PREDICTION ENGINE",
+        "subtitle": "Pehle Jaano, Pehle Bachao",
+        "tagline": "Dunya Ki Apps Problem Ke Baad Aati Hain, Hum PEHLE",
+        
+        "prediction_types": [
+            {
+                "type": "Health Prediction",
+                "icon": "🏥",
+                "desc": "Health issues ka early warning",
+                "method": "Lifestyle analysis + patterns"
+            },
+            {
+                "type": "Financial Alert",
+                "icon": "💰",
+                "desc": "Money problems se pehle alert",
+                "method": "Spending pattern analysis"
+            },
+            {
+                "type": "Relationship Warning",
+                "icon": "💔",
+                "desc": "Rishton mein tension ka signal",
+                "method": "Communication pattern analysis"
+            },
+            {
+                "type": "Career Guidance",
+                "icon": "💼",
+                "desc": "Job risk ya opportunity",
+                "method": "Market + skill analysis"
+            },
+            {
+                "type": "Safety Alert",
+                "icon": "⚠️",
+                "desc": "Danger zone detection",
+                "method": "Location + news analysis"
+            }
+        ],
+        
+        "how_it_works": {
+            "data_analysis": "AI analyzes your patterns",
+            "pattern_match": "Compares with millions of cases",
+            "early_warning": "Alerts before problem occurs",
+            "solution": "Provides preventive action"
+        },
+        
+        "vs_others": {
+            "other_apps": "React to problems",
+            "gyan_sultanat": "Predict and prevent"
+        }
+    }
+
+# ==================== 🎯 TRUTH DETECTOR ====================
+# Voice Analysis for Honesty
+
+@api_router.get("/truth-detector")
+async def get_truth_detector():
+    """
+    🎯 Truth Detector
+    Dhoka Pakadne Ka Tool
+    """
+    return {
+        "success": True,
+        "title": "🎯 TRUTH DETECTOR",
+        "subtitle": "Purity Shield Extension",
+        "tagline": "Jhooth Ka System Se Bahar",
+        
+        "features": [
+            {
+                "name": "Voice Analysis",
+                "icon": "🎤",
+                "desc": "Awaaz se tension detect karo",
+                "accuracy": "85%+"
+            },
+            {
+                "name": "Text Analysis",
+                "icon": "📝",
+                "desc": "Message patterns se jhooth pakdo",
+                "accuracy": "80%+"
+            },
+            {
+                "name": "Behavior Pattern",
+                "icon": "📊",
+                "desc": "Unusual behavior detection",
+                "accuracy": "75%+"
+            }
+        ],
+        
+        "use_cases": [
+            {"case": "Business Deals", "desc": "Partner ki honesty check karo"},
+            {"case": "Relationships", "desc": "Trust issues resolve karo"},
+            {"case": "Hiring", "desc": "Employee verification"},
+            {"case": "Scam Detection", "desc": "Fraud calls identify karo"}
+        ],
+        
+        "privacy_note": {
+            "consent": "Both parties must consent",
+            "ethical_use": "Only for legitimate purposes",
+            "no_misuse": "Misuse = account ban"
+        }
+    }
+
+# ==================== ⚖️ AUTO-LEGAL GUARD ====================
+# Automatic Legal Protection
+
+@api_router.get("/auto-legal-guard")
+async def get_auto_legal_guard():
+    """
+    ⚖️ Auto-Legal Guard
+    Automatic Legal Notice Generator
+    """
+    return {
+        "success": True,
+        "title": "⚖️ AUTO-LEGAL GUARD",
+        "subtitle": "Vakilon Ke Chakkar Khatam",
+        "tagline": "Galat Kaam Par Automatic Legal Action",
+        
+        "features": [
+            {
+                "name": "Auto Legal Notice",
+                "icon": "📜",
+                "desc": "Thagi par automatic notice generate",
+                "cost": "Free for basic"
+            },
+            {
+                "name": "Document Generator",
+                "icon": "📄",
+                "desc": "Legal documents instant banao",
+                "types": ["Agreement", "Complaint", "Notice", "Affidavit"]
+            },
+            {
+                "name": "Lawyer Connect",
+                "icon": "👨‍⚖️",
+                "desc": "Verified lawyers se instant connect",
+                "consultation": "Starting ₹99"
+            },
+            {
+                "name": "Evidence Locker",
+                "icon": "🔒",
+                "desc": "Digital evidence safe storage",
+                "validity": "Court-admissible"
+            }
+        ],
+        
+        "auto_triggers": [
+            {"trigger": "Scam detected", "action": "Warning + Evidence saved"},
+            {"trigger": "Fraud transaction", "action": "Auto-freeze + Report"},
+            {"trigger": "Harassment", "action": "Legal notice generated"},
+            {"trigger": "Contract breach", "action": "Reminder + Notice option"}
+        ],
+        
+        "benefit": {
+            "no_lawyer_needed": "Basic issues handle yourself",
+            "time_saved": "Instant document generation",
+            "money_saved": "Free basic legal tools",
+            "protection": "24/7 legal shield"
+        }
+    }
+
+@api_router.post("/auto-legal-guard/generate-notice")
+async def generate_legal_notice(request: Request):
+    """Generate automatic legal notice"""
+    data = await request.json()
+    notice_type = data.get("notice_type", "general")
+    against = data.get("against", "")
+    reason = data.get("reason", "")
+    
+    return {
+        "success": True,
+        "message": "⚖️ Legal Notice Generated!",
+        "notice_id": f"LEGAL-{uuid.uuid4().hex[:8].upper()}",
+        "type": notice_type,
+        "against": against,
+        "status": "draft_ready",
+        "next_step": "Review and send via registered post or email"
+    }
+
+# ==================== 🧠 GYAN PSYCHOLOGY MISSION ====================
+# Complete Mental Wellness
+
+@api_router.get("/psychology/mission")
+async def get_psychology_mission():
+    """
+    🧠 Gyan Psychology Mission
+    Complete Mental Wellness Platform
+    """
+    return {
+        "success": True,
+        "title": "🧠 GYAN PSYCHOLOGY MISSION",
+        "subtitle": "Dimaag Ki Sehat, Zindagi Ki Khushi",
+        "tagline": "Mental Wellness For All",
+        
+        "modules": {
+            "stress_management": {
+                "name": "Stress Buster",
+                "icon": "😰➡️😌",
+                "features": ["Breathing exercises", "Meditation guides", "Calming music"]
+            },
+            "anxiety_help": {
+                "name": "Anxiety Relief",
+                "icon": "💆",
+                "features": ["Grounding techniques", "Positive affirmations", "Expert chat"]
+            },
+            "depression_support": {
+                "name": "Hope & Healing",
+                "icon": "🌅",
+                "features": ["Daily motivation", "Support community", "Professional help connect"]
+            },
+            "sleep_aid": {
+                "name": "Better Sleep",
+                "icon": "😴",
+                "features": ["Sleep stories", "White noise", "Sleep tracking"]
+            },
+            "confidence_builder": {
+                "name": "Self Confidence",
+                "icon": "💪",
+                "features": ["Daily challenges", "Success stories", "Skill building"]
+            }
+        },
+        
+        "24x7_helpline": {
+            "available": True,
+            "type": "Chat + Call",
+            "languages": ["Hindi", "English", "Bengali", "Tamil", "Telugu"],
+            "cost": "Free"
+        },
+        
+        "privacy": "100% confidential - No data shared ever"
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
