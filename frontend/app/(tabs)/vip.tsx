@@ -253,10 +253,10 @@ export default function VIPScreen() {
                   </View>
 
                   <View style={styles.levelBenefits}>
-                    {level.charity_bonus > 0 && (
+                    {level.gift_bonus > 0 && (
                       <View style={styles.benefitItem}>
-                        <Ionicons name="heart" size={14} color="#4CAF50" />
-                        <Text style={styles.benefitText}>+{level.charity_bonus}% Charity Bonus</Text>
+                        <Ionicons name="gift" size={14} color="#4CAF50" />
+                        <Text style={styles.benefitText}>+{level.gift_bonus}% Gift Bonus</Text>
                       </View>
                     )}
                     {level.free_spins_daily > 0 && (
