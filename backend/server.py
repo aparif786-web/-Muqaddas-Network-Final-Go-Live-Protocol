@@ -13348,3 +13348,425 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+# ========================================
+# 🌍 COUNTRY-WISE OFFICIAL GROUP SYSTEM
+# ========================================
+
+COUNTRY_WHATSAPP_GROUPS = {
+    "IN": {
+        "country_name": "India",
+        "currency": "INR",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/INDIA_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/INDIA_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/INDIA_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/INDIA_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/INDIA_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/INDIA_AGENCY"
+        },
+        "director": {
+            "name": "AP Arif",
+            "designation": "Country Director - India",
+            "whatsapp": "+917638082406",
+            "email": "india@muqaddasnetwork.com"
+        },
+        "server_location": "Mumbai, India",
+        "tax_applicable": "GST 18%",
+        "laws_followed": ["IT Act 2000", "Data Protection Bill", "DPDP Act 2023"]
+    },
+    "PK": {
+        "country_name": "Pakistan",
+        "currency": "PKR",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/PK_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/PK_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/PK_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/PK_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/PK_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/PK_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - Pakistan",
+            "whatsapp": "",
+            "email": "pakistan@muqaddasnetwork.com"
+        },
+        "server_location": "Karachi, Pakistan",
+        "tax_applicable": "Sales Tax 17%",
+        "laws_followed": ["PECA 2016", "Data Protection Laws"]
+    },
+    "BD": {
+        "country_name": "Bangladesh",
+        "currency": "BDT",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/BD_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/BD_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/BD_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/BD_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/BD_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/BD_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - Bangladesh",
+            "whatsapp": "",
+            "email": "bangladesh@muqaddasnetwork.com"
+        },
+        "server_location": "Dhaka, Bangladesh",
+        "tax_applicable": "VAT 15%",
+        "laws_followed": ["Digital Security Act 2018", "ICT Act"]
+    },
+    "AE": {
+        "country_name": "UAE",
+        "currency": "AED",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/UAE_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/UAE_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/UAE_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/UAE_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/UAE_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/UAE_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - UAE",
+            "whatsapp": "",
+            "email": "uae@muqaddasnetwork.com"
+        },
+        "server_location": "Dubai, UAE",
+        "tax_applicable": "VAT 5%",
+        "laws_followed": ["UAE Cyber Law", "Data Protection Law"]
+    },
+    "SA": {
+        "country_name": "Saudi Arabia",
+        "currency": "SAR",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/SA_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/SA_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/SA_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/SA_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/SA_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/SA_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - Saudi Arabia",
+            "whatsapp": "",
+            "email": "saudi@muqaddasnetwork.com"
+        },
+        "server_location": "Riyadh, Saudi Arabia",
+        "tax_applicable": "VAT 15%",
+        "laws_followed": ["Saudi Cyber Crime Law", "Personal Data Protection Law"]
+    },
+    "US": {
+        "country_name": "USA",
+        "currency": "USD",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/US_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/US_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/US_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/US_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/US_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/US_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - USA",
+            "whatsapp": "",
+            "email": "usa@muqaddasnetwork.com"
+        },
+        "server_location": "Virginia, USA",
+        "tax_applicable": "State Tax varies",
+        "laws_followed": ["CCPA", "COPPA", "State Privacy Laws"]
+    },
+    "GB": {
+        "country_name": "United Kingdom",
+        "currency": "GBP",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/UK_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/UK_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/UK_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/UK_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/UK_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/UK_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - UK",
+            "whatsapp": "",
+            "email": "uk@muqaddasnetwork.com"
+        },
+        "server_location": "London, UK",
+        "tax_applicable": "VAT 20%",
+        "laws_followed": ["UK GDPR", "Data Protection Act 2018"]
+    },
+    "DE": {
+        "country_name": "Germany",
+        "currency": "EUR",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/DE_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/DE_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/DE_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/DE_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/DE_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/DE_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - Germany",
+            "whatsapp": "",
+            "email": "germany@muqaddasnetwork.com"
+        },
+        "server_location": "Frankfurt, Germany",
+        "tax_applicable": "VAT 19%",
+        "laws_followed": ["GDPR", "BDSG", "TMG"]
+    },
+    "NP": {
+        "country_name": "Nepal",
+        "currency": "NPR",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/NP_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/NP_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/NP_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/NP_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/NP_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/NP_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - Nepal",
+            "whatsapp": "",
+            "email": "nepal@muqaddasnetwork.com"
+        },
+        "server_location": "Kathmandu, Nepal",
+        "tax_applicable": "VAT 13%",
+        "laws_followed": ["Electronic Transaction Act", "Privacy Act"]
+    },
+    "AU": {
+        "country_name": "Australia",
+        "currency": "AUD",
+        "whatsapp_groups": {
+            "super_admin": "https://chat.whatsapp.com/AU_SUPER_ADMIN",
+            "country_manager": "https://chat.whatsapp.com/AU_MANAGER",
+            "customer_service": "https://chat.whatsapp.com/AU_SUPPORT",
+            "app_manager": "https://chat.whatsapp.com/AU_APP_TEAM",
+            "founder_group": "https://chat.whatsapp.com/AU_FOUNDER",
+            "agency_group": "https://chat.whatsapp.com/AU_AGENCY"
+        },
+        "director": {
+            "name": "TBD",
+            "designation": "Country Director - Australia",
+            "whatsapp": "",
+            "email": "australia@muqaddasnetwork.com"
+        },
+        "server_location": "Sydney, Australia",
+        "tax_applicable": "GST 10%",
+        "laws_followed": ["Privacy Act 1988", "Consumer Data Right"]
+    }
+}
+
+# 12-Level Agency System
+AGENCY_LEVELS = {
+    1: {"name": "Starter Agent", "min_hosts": 0, "commission": 4},
+    2: {"name": "Bronze Agent", "min_hosts": 5, "commission": 5},
+    3: {"name": "Silver Agent", "min_hosts": 15, "commission": 6},
+    4: {"name": "Gold Agent", "min_hosts": 30, "commission": 7},
+    5: {"name": "Platinum Agent", "min_hosts": 50, "commission": 8},
+    6: {"name": "Diamond Agent", "min_hosts": 100, "commission": 10},
+    7: {"name": "Elite Agent", "min_hosts": 200, "commission": 12},
+    8: {"name": "Master Agent", "min_hosts": 500, "commission": 14},
+    9: {"name": "Grand Master", "min_hosts": 1000, "commission": 16},
+    10: {"name": "Legend Agent", "min_hosts": 2000, "commission": 18},
+    11: {"name": "Royal Agent", "min_hosts": 5000, "commission": 19},
+    12: {"name": "Sultan Agent", "min_hosts": 10000, "commission": 20}
+}
+
+@api_router.get("/official/country-groups/{country_code}")
+async def get_country_official_groups(country_code: str):
+    """Get official WhatsApp groups for a country"""
+    country_code = country_code.upper()
+    if country_code not in COUNTRY_WHATSAPP_GROUPS:
+        raise HTTPException(status_code=404, detail="Country not found")
+    
+    return {
+        "success": True,
+        "country": COUNTRY_WHATSAPP_GROUPS[country_code],
+        "message": f"Official groups for {COUNTRY_WHATSAPP_GROUPS[country_code]['country_name']}"
+    }
+
+@api_router.get("/official/all-countries")
+async def get_all_country_groups():
+    """Get all countries with their official groups"""
+    return {
+        "success": True,
+        "total_countries": len(COUNTRY_WHATSAPP_GROUPS),
+        "countries": COUNTRY_WHATSAPP_GROUPS,
+        "founder": {
+            "name": "AP Arif",
+            "company": "Muqaddas Technology",
+            "whatsapp": "+917638082406",
+            "website": "https://muqaddasnetwork.com"
+        }
+    }
+
+@api_router.get("/agency/levels")
+async def get_agency_levels():
+    """Get all 12 agency levels"""
+    return {
+        "success": True,
+        "total_levels": 12,
+        "levels": AGENCY_LEVELS,
+        "commission_info": "Commission is percentage of host earnings"
+    }
+
+@api_router.post("/agency/generate-code")
+async def generate_agency_code(user_id: str, country_code: str):
+    """Generate unique agency code based on user ID"""
+    country_code = country_code.upper()
+    if country_code not in COUNTRY_WHATSAPP_GROUPS:
+        raise HTTPException(status_code=400, detail="Invalid country code")
+    
+    # Agency code = Country + User ID last 6 digits
+    agency_code = f"{country_code}{user_id[-6:].upper()}"
+    
+    return {
+        "success": True,
+        "agency_code": agency_code,
+        "country": COUNTRY_WHATSAPP_GROUPS[country_code]['country_name'],
+        "level": 1,
+        "level_name": AGENCY_LEVELS[1]['name'],
+        "commission": AGENCY_LEVELS[1]['commission'],
+        "whatsapp_group": COUNTRY_WHATSAPP_GROUPS[country_code]['whatsapp_groups']['agency_group']
+    }
+
+@api_router.get("/agency/check-hire-permission")
+async def check_hire_permission(agency_country: str, host_country: str):
+    """Check if agency can hire host from another country"""
+    agency_country = agency_country.upper()
+    host_country = host_country.upper()
+    
+    # Same country - allowed
+    if agency_country == host_country:
+        return {
+            "success": True,
+            "allowed": True,
+            "message": f"✅ {agency_country} agency can hire {host_country} hosts"
+        }
+    
+    # Different country - NOT allowed
+    return {
+        "success": True,
+        "allowed": False,
+        "message": f"❌ {agency_country} agency CANNOT hire {host_country} hosts. Each country's agency can only hire hosts from the same country. This follows local laws and keeps money within the country.",
+        "reason": "Country-wise restriction to follow local laws"
+    }
+
+@api_router.get("/coin-seller/options")
+async def get_coin_seller_options():
+    """Get all coin purchase options for coin sellers"""
+    return {
+        "success": True,
+        "purchase_methods": {
+            "direct_company": {
+                "name": "Direct from Company",
+                "description": "Buy coins directly from Muqaddas Technology",
+                "methods": ["Bank Transfer", "UPI", "Credit/Debit Card"],
+                "min_purchase": 10000,
+                "discount": "5% on 50,000+ coins"
+            },
+            "epay": {
+                "name": "ePay",
+                "description": "International payment gateway",
+                "currencies": ["USD", "EUR", "GBP"],
+                "min_purchase": 100
+            },
+            "usdt": {
+                "name": "USDT (Tether)",
+                "description": "Cryptocurrency payment",
+                "networks": ["TRC20", "ERC20", "BEP20"],
+                "wallet_address": "Contact admin for wallet",
+                "min_purchase": 50
+            }
+        },
+        "withdrawal_methods": {
+            "coin_exchange": "Exchange coins with other sellers",
+            "host_withdrawal": "Hosts can withdraw from coin sellers",
+            "gifting": "Convert to gifts for streaming"
+        }
+    }
+
+@api_router.get("/official/group-structure")
+async def get_official_group_structure():
+    """Get official WhatsApp group structure"""
+    return {
+        "success": True,
+        "group_structure": {
+            "super_admin": {
+                "role": "Super Admin",
+                "description": "Overall control of all operations",
+                "members": ["Founder", "CTO", "COO"]
+            },
+            "country_manager": {
+                "role": "Country Manager",
+                "description": "Manages specific country operations",
+                "reports_to": "Super Admin"
+            },
+            "customer_service": {
+                "role": "Customer Service Team",
+                "description": "Handles user queries and support",
+                "reports_to": "Country Manager"
+            },
+            "app_manager": {
+                "role": "Application Manager",
+                "description": "Manages app operations and updates",
+                "reports_to": "Country Manager"
+            },
+            "founder_group": {
+                "role": "Founder Group",
+                "description": "Strategic decisions and vision",
+                "members": ["AP Arif - Founder"]
+            },
+            "agency_group": {
+                "role": "Agency Group",
+                "description": "All agencies of a country",
+                "managed_by": "Country Manager"
+            }
+        },
+        "hierarchy": [
+            "1. Founder (AP Arif)",
+            "2. Super Admin",
+            "3. Country Director",
+            "4. Country Manager",
+            "5. App Manager",
+            "6. Customer Service Team",
+            "7. Agency (12 Levels)",
+            "8. Sub-Agency",
+            "9. Hosts",
+            "10. Coin Sellers",
+            "11. Regular Users"
+        ]
+    }
+
+@api_router.get("/legal/country-compliance/{country_code}")
+async def get_country_compliance(country_code: str):
+    """Get legal compliance info for a country"""
+    country_code = country_code.upper()
+    if country_code not in COUNTRY_WHATSAPP_GROUPS:
+        raise HTTPException(status_code=404, detail="Country not found")
+    
+    country = COUNTRY_WHATSAPP_GROUPS[country_code]
+    
+    return {
+        "success": True,
+        "country": country['country_name'],
+        "compliance": {
+            "server_location": country['server_location'],
+            "data_stored_in": country['country_name'],
+            "tax_applicable": country['tax_applicable'],
+            "laws_followed": country['laws_followed'],
+            "director": country['director'],
+            "support_email": country['director']['email']
+        },
+        "guarantee": f"All data of {country['country_name']} users is stored in {country['server_location']} and follows local laws."
+    }
