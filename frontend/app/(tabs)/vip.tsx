@@ -332,9 +332,9 @@ export default function VIPScreen() {
                 </Text>
 
                 <View style={styles.modalBenefits}>
-                  {selectedLevel.charity_bonus > 0 && (
+                  {selectedLevel.gift_bonus > 0 && (
                     <Text style={styles.modalBenefitText}>
-                      • +{selectedLevel.charity_bonus}% Charity Lucky Wallet Bonus
+                      • +{selectedLevel.gift_bonus}% Gift Bonus
                     </Text>
                   )}
                   {selectedLevel.free_spins_daily > 0 && (
