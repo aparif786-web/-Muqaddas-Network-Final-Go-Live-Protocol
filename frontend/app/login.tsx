@@ -158,6 +158,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
+  freeBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  freeBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  freeNote: {
+    fontSize: 12,
+    color: '#4CAF50',
+    marginTop: 8,
+  },
   logoContainer: {
     marginBottom: 20,
   },
