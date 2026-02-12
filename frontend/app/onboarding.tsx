@@ -65,12 +65,12 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     id: 5,
-    title: "❤️ Charity",
-    subtitle: "Duniya Badlo",
-    description: "Aapki har activity se 5% charity mein jaata hai. ₹10 Billion ka lakshya!",
+    title: "📺 Live Streaming",
+    subtitle: "Connect Karo",
+    description: "Live jaao, fans banao, gifts lo! Duniya bhar se log aapse connect honge!",
     icon: "🌍",
     color: "#E91E63",
-    aiMessage: "Gyan Sultanat sirf business nahi - ek mission hai. Aapki madad se hum duniya badlenge!"
+    aiMessage: "Live streaming se aap famous ho sakte ho aur real income bana sakte ho!"
   },
   {
     id: 6,
