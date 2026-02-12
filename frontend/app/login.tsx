@@ -70,6 +70,9 @@ export default function LoginScreen() {
           <View style={styles.content}>
             {/* Header Section */}
             <View style={styles.header}>
+              <View style={styles.freeBadge}>
+                <Text style={styles.freeBadgeText}>💯 100% FREE APP</Text>
+              </View>
               <View style={styles.logoContainer}>
                 <LinearGradient
                   colors={['#FFD700', '#FFA500']}
@@ -82,6 +85,7 @@ export default function LoginScreen() {
               <Text style={styles.hindiTitle}>ज्ञान सल्तनत</Text>
               <Text style={styles.subtitle}>Gyaan se Aay, Apne Sapne Sajaye!</Text>
               <Text style={styles.tagline}>ज्ञान से आय, अपने सपने सजाये!</Text>
+              <Text style={styles.freeNote}>🎁 Free Live Streaming | 🎀 Gift & Earn</Text>
             </View>
 
             {/* Features Section */}
