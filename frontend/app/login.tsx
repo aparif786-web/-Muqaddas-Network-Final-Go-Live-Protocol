@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,7 +33,6 @@ export default function LoginScreen() {
 
   const handleGoogleLogin = async () => {
     try {
-      // Create redirect URL based on platform
       const redirectUrl = Platform.OS === 'web'
         ? `${process.env.EXPO_PUBLIC_BACKEND_URL}/`
         : Linking.createURL('/');
@@ -41,10 +40,8 @@ export default function LoginScreen() {
       const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
       
       if (Platform.OS === 'web') {
-        // For web, just redirect
         window.location.href = authUrl;
       } else {
-        // For mobile, use WebBrowser
         const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
         
         if (result.type === 'success' && result.url) {
@@ -63,77 +60,121 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#1A1A2E', '#16213E', '#0F3460']}
+        colors={['#FFF8E7', '#FFF5E1', '#FFFAF0']}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.content}>
-            {/* Header Section */}
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Header with Logo */}
             <View style={styles.header}>
-              <View style={styles.freeBadge}>
-                <Text style={styles.freeBadgeText}>💯 100% FREE APP</Text>
-              </View>
+              {/* Green Heart Logo */}
               <View style={styles.logoContainer}>
                 <LinearGradient
-                  colors={['#FFD700', '#FFA500']}
+                  colors={['#4CAF50', '#2E7D32']}
                   style={styles.logoGradient}
                 >
-                  <Text style={styles.crownEmoji}>👑</Text>
+                  <Text style={styles.heartEmoji}>💚</Text>
                 </LinearGradient>
               </View>
+              
               <Text style={styles.title}>GYAN SULTANAT</Text>
               <Text style={styles.hindiTitle}>ज्ञान सल्तनत</Text>
               <Text style={styles.subtitle}>Gyaan se Aay, Apne Sapne Sajaye!</Text>
-              <Text style={styles.tagline}>ज्ञान से आय, अपने सपने सजाये!</Text>
-              <Text style={styles.freeNote}>🎁 Free Live Streaming | 🎀 Gift & Earn</Text>
+              
+              {/* Free Badge */}
+              <View style={styles.freeBadge}>
+                <Text style={styles.freeBadgeText}>🎁 100% FREE</Text>
+              </View>
             </View>
 
-            {/* Features Section */}
-            <View style={styles.features}>
-              <FeatureItem icon="school" text="Education Platform" />
-              <FeatureItem icon="bulb" text="Gyan Yuddh" />
-              <FeatureItem icon="people" text="Live Streaming" />
-              <FeatureItem icon="trophy" text="Rewards & Leaderboard" />
+            {/* Features Grid */}
+            <View style={styles.featuresGrid}>
+              <TouchableOpacity style={styles.featureCard}>
+                <LinearGradient colors={['#FF6B6B', '#FF8E53']} style={styles.featureGradient}>
+                  <Ionicons name="videocam" size={28} color="#FFF" />
+                  <Text style={styles.featureText}>Live</Text>
+                  <Text style={styles.featureSubtext}>Streaming</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.featureCard}>
+                <LinearGradient colors={['#4ECDC4', '#44A08D']} style={styles.featureGradient}>
+                  <Ionicons name="mic" size={28} color="#FFF" />
+                  <Text style={styles.featureText}>Audio</Text>
+                  <Text style={styles.featureSubtext}>Rooms</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.featureCard}>
+                <LinearGradient colors={['#A770EF', '#CF8BF3']} style={styles.featureGradient}>
+                  <Ionicons name="gift" size={28} color="#FFF" />
+                  <Text style={styles.featureText}>Gift</Text>
+                  <Text style={styles.featureSubtext}>& Earn</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.featureCard}>
+                <LinearGradient colors={['#F7971E', '#FFD200']} style={styles.featureGradient}>
+                  <Ionicons name="school" size={28} color="#FFF" />
+                  <Text style={styles.featureText}>Gyan</Text>
+                  <Text style={styles.featureSubtext}>Education</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.featureCard}>
+                <LinearGradient colors={['#11998E', '#38EF7D']} style={styles.featureGradient}>
+                  <Ionicons name="trophy" size={28} color="#FFF" />
+                  <Text style={styles.featureText}>Gyan</Text>
+                  <Text style={styles.featureSubtext}>Yuddh</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.featureCard}>
+                <LinearGradient colors={['#FC466B', '#3F5EFB']} style={styles.featureGradient}>
+                  <Ionicons name="people" size={28} color="#FFF" />
+                  <Text style={styles.featureText}>Make</Text>
+                  <Text style={styles.featureSubtext}>Friends</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
 
-            {/* Login Button */}
+            {/* Login Section */}
             <View style={styles.loginSection}>
-              <TouchableOpacity
-                style={styles.googleButton}
-                onPress={handleGoogleLogin}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
                 <View style={styles.googleIconContainer}>
-                  <Ionicons name="logo-google" size={24} color="#4285F4" />
+                  <Text style={styles.googleIcon}>G</Text>
                 </View>
                 <Text style={styles.googleButtonText}>Continue with Google</Text>
               </TouchableOpacity>
 
-              <View style={styles.termsContainer}>
-                <Text style={styles.termsText}>By continuing, you agree to our </Text>
-                <TouchableOpacity onPress={() => handleOpenLink('/api/legal/terms')}>
-                  <Text style={styles.termsLink}>Terms of Service</Text>
-                </TouchableOpacity>
-                <Text style={styles.termsText}> & </Text>
-                <TouchableOpacity onPress={() => handleOpenLink('/api/legal/privacy-policy')}>
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.orText}>─────  or  ─────</Text>
+
+              <TouchableOpacity style={styles.phoneButton}>
+                <Ionicons name="call" size={20} color="#4CAF50" />
+                <Text style={styles.phoneButtonText}>Continue with Phone</Text>
+              </TouchableOpacity>
             </View>
-          </View>
+
+            {/* Terms */}
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>By continuing, you agree to our </Text>
+              <TouchableOpacity onPress={() => handleOpenLink('/api/legal/terms')}>
+                <Text style={styles.termsLink}>Terms of Service</Text>
+              </TouchableOpacity>
+              <Text style={styles.termsText}> & </Text>
+              <TouchableOpacity onPress={() => handleOpenLink('/api/legal/privacy-policy')}>
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Company Info */}
+            <View style={styles.companyInfo}>
+              <Text style={styles.companyText}>💚 Muqaddas Technology</Text>
+              <Text style={styles.companySubtext}>Powered by Aayushka Designing</Text>
+            </View>
+          </ScrollView>
         </SafeAreaView>
       </LinearGradient>
-    </View>
-  );
-}
-
-function FeatureItem({ icon, text }: { icon: string; text: string }) {
-  return (
-    <View style={styles.featureItem}>
-      <View style={styles.featureIconContainer}>
-        <Ionicons name={icon as any} size={20} color="#FFD700" />
-      </View>
-      <Text style={styles.featureText}>{text}</Text>
     </View>
   );
 }
@@ -141,7 +182,6 @@ function FeatureItem({ icon, text }: { icon: string; text: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
   },
   gradient: {
     flex: 1,
@@ -149,128 +189,182 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
-  },
-  freeBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 16,
-  },
-  freeBadgeText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  freeNote: {
-    fontSize: 12,
-    color: '#4CAF50',
-    marginTop: 8,
+    marginTop: 20,
+    marginBottom: 30,
   },
   logoContainer: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   logoGradient: {
     width: 100,
     height: 100,
     borderRadius: 50,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  crownEmoji: {
-    fontSize: 50,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    letterSpacing: 2,
-    marginBottom: 4,
-  },
-  hindiTitle: {
-    fontSize: 22,
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#A0A0A0',
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 14,
-    color: '#808080',
-    fontStyle: 'italic',
-  },
-  features: {
-    marginBottom: 48,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    borderRadius: 12,
-  },
-  featureIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  featureText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  loginSection: {
-    alignItems: 'center',
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    width: '100%',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: '#4CAF50',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
+  heartEmoji: {
+    fontSize: 50,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    letterSpacing: 2,
+  },
+  hindiTitle: {
+    fontSize: 18,
+    color: '#4CAF50',
+    marginTop: 2,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  freeBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 15,
+  },
+  freeBadgeText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  featureCard: {
+    width: (width - 60) / 3,
+    marginBottom: 15,
+  },
+  featureGradient: {
+    padding: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  featureText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+    marginTop: 8,
+  },
+  featureSubtext: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+  },
+  loginSection: {
+    marginBottom: 20,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    padding: 15,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
   googleIconContainer: {
-    marginRight: 12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#4285F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  googleIcon: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   googleButtonText: {
+    color: '#333',
     fontSize: 16,
     fontWeight: '600',
-    color: '#333333',
+  },
+  orText: {
+    textAlign: 'center',
+    color: '#999',
+    marginVertical: 15,
+    fontSize: 12,
+  },
+  phoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    padding: 15,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  phoneButtonText: {
+    color: '#4CAF50',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
   termsText: {
     fontSize: 12,
-    color: '#808080',
-    textAlign: 'center',
-    marginTop: 20,
-    paddingHorizontal: 20,
+    color: '#666',
+  },
+  termsLink: {
+    fontSize: 12,
+    color: '#4CAF50',
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  companyInfo: {
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  companyText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: 'bold',
+  },
+  companySubtext: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
   },
 });
