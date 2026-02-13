@@ -10,7 +10,7 @@
 
 | Service | URL |
 |---------|-----|
-| **Main App (Knowledge Hub)** | https://sultanat-auth-fix.preview.emergentagent.com/leaderboard |
+| **Main App (Knowledge Hub)** | https://gyan-login-fix.preview.emergentagent.com/leaderboard |
 | **Share Link** | https://app.emergent.sh/share?app=knowledge-hub-386 |
 
 ---
